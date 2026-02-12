@@ -40,7 +40,9 @@ class Embed:
         self.thumbnail = {"url": url}
         return self
 
-    def set_author(self, *, name: str, url: str | None = None, icon_url: str | None = None) -> Embed:
+    def set_author(
+        self, *, name: str, url: str | None = None, icon_url: str | None = None
+    ) -> Embed:
         self.author = {"name": name}
         if url:
             self.author["url"] = url

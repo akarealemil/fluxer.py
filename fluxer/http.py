@@ -6,15 +6,17 @@ from typing import Any
 
 import aiohttp
 
-from .errors import http_exception_from_status, RateLimited
+from .errors import http_exception_from_status
 
 log = logging.getLogger(__name__)
 
 BASE_URL = "https://api.fluxer.app/v1"
 
+
 def _get_user_agent() -> str:
     """Get the user agent string with the current version."""
     from . import __version__
+
     return f"fluxer.py/{__version__} (https://github.com/akarealemil/fluxer.py)"
 
 
@@ -202,7 +204,9 @@ class HTTPClient:
                         else:
                             log.warning(
                                 "Rate limited on %s, retry in %.2fs (attempt %d)",
-                                route.url, retry_after, attempt + 1,
+                                route.url,
+                                retry_after,
+                                attempt + 1,
                             )
                             await asyncio.sleep(retry_after)
                         continue
@@ -211,7 +215,9 @@ class HTTPClient:
                     if resp.status >= 500:
                         log.warning(
                             "Server error %d on %s, retrying (attempt %d)",
-                            resp.status, route.url, attempt + 1,
+                            resp.status,
+                            route.url,
+                            attempt + 1,
                         )
                         await asyncio.sleep(1 + attempt)
                         continue
@@ -228,7 +234,9 @@ class HTTPClient:
 
             except (aiohttp.ClientError, asyncio.TimeoutError) as exc:
                 if attempt < 4:
-                    log.warning("Connection error: %s, retrying (attempt %d)", exc, attempt + 1)
+                    log.warning(
+                        "Connection error: %s, retrying (attempt %d)", exc, attempt + 1
+                    )
                     await asyncio.sleep(1 + attempt)
                     continue
                 raise
@@ -268,7 +276,9 @@ class HTTPClient:
     # -- Channels --
     async def get_channel(self, channel_id: str) -> dict[str, Any]:
         """GET /channels/{channel_id}"""
-        return await self.request(Route("GET", "/channels/{channel_id}", channel_id=channel_id))
+        return await self.request(
+            Route("GET", "/channels/{channel_id}", channel_id=channel_id)
+        )
 
     # -- Messages --
     async def send_message(
@@ -292,7 +302,10 @@ class HTTPClient:
             # Use multipart form data for file uploads
             form = aiohttp.FormData()
             import json as json_mod
-            form.add_field("payload_json", json_mod.dumps(payload), content_type="application/json")
+
+            form.add_field(
+                "payload_json", json_mod.dumps(payload), content_type="application/json"
+            )
             for i, file in enumerate(files):
                 form.add_field(f"files[{i}]", file["data"], filename=file["filename"])
             return await self.request(route, data=form)
@@ -356,7 +369,9 @@ class HTTPClient:
 
     async def get_guild_channels(self, guild_id: str) -> list[dict[str, Any]]:
         """GET /guilds/{guild_id}/channels"""
-        return await self.request(Route("GET", "/guilds/{guild_id}/channels", guild_id=guild_id))
+        return await self.request(
+            Route("GET", "/guilds/{guild_id}/channels", guild_id=guild_id)
+        )
 
     async def create_guild(
         self,
@@ -434,7 +449,9 @@ class HTTPClient:
     # -- Roles --
     async def get_guild_roles(self, guild_id: str) -> list[dict[str, Any]]:
         """GET /guilds/{guild_id}/roles"""
-        return await self.request(Route("GET", "/guilds/{guild_id}/roles", guild_id=guild_id))
+        return await self.request(
+            Route("GET", "/guilds/{guild_id}/roles", guild_id=guild_id)
+        )
 
     async def create_guild_role(
         self,
@@ -494,14 +511,24 @@ class HTTPClient:
         payload.update(kwargs)
 
         return await self.request(
-            Route("PATCH", "/guilds/{guild_id}/roles/{role_id}", guild_id=guild_id, role_id=role_id),
+            Route(
+                "PATCH",
+                "/guilds/{guild_id}/roles/{role_id}",
+                guild_id=guild_id,
+                role_id=role_id,
+            ),
             json=payload,
         )
 
     async def delete_guild_role(self, guild_id: str, role_id: str) -> None:
         """DELETE /guilds/{guild_id}/roles/{role_id}"""
         await self.request(
-            Route("DELETE", "/guilds/{guild_id}/roles/{role_id}", guild_id=guild_id, role_id=role_id)
+            Route(
+                "DELETE",
+                "/guilds/{guild_id}/roles/{role_id}",
+                guild_id=guild_id,
+                role_id=role_id,
+            )
         )
 
     # -- Channels (create/modify) --
@@ -555,7 +582,8 @@ class HTTPClient:
         payload.update(kwargs)
 
         return await self.request(
-            Route("POST", "/guilds/{guild_id}/channels", guild_id=guild_id), json=payload
+            Route("POST", "/guilds/{guild_id}/channels", guild_id=guild_id),
+            json=payload,
         )
 
     async def modify_channel(
@@ -589,12 +617,15 @@ class HTTPClient:
         payload.update(kwargs)
 
         return await self.request(
-            Route("PATCH", "/channels/{channel_id}", channel_id=channel_id), json=payload
+            Route("PATCH", "/channels/{channel_id}", channel_id=channel_id),
+            json=payload,
         )
 
     async def delete_channel(self, channel_id: str) -> None:
         """DELETE /channels/{channel_id}"""
-        await self.request(Route("DELETE", "/channels/{channel_id}", channel_id=channel_id))
+        await self.request(
+            Route("DELETE", "/channels/{channel_id}", channel_id=channel_id)
+        )
 
     # -- User Profile --
     async def modify_current_user(

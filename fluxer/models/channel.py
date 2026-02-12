@@ -78,7 +78,9 @@ class Channel:
         elif embeds:
             embed_list = [e.to_dict() for e in embeds]
 
-        data = await self._http.send_message(self.id, content=content, embeds=embed_list)
+        data = await self._http.send_message(
+            self.id, content=content, embeds=embed_list
+        )
         return Message.from_data(data, self._http)
 
     def __eq__(self, other: object) -> bool:

@@ -11,10 +11,17 @@ class FluxerException(Exception):
 # HTTP Errors
 # =============================================================================
 
+
 class HTTPException(FluxerException):
     """Raised when an HTTP request to the Fluxer API fails."""
 
-    def __init__(self, status: int, code: str, message: str, errors: list[dict[str, Any]] | None = None):
+    def __init__(
+        self,
+        status: int,
+        code: str,
+        message: str,
+        errors: list[dict[str, Any]] | None = None,
+    ):
         self.status = status
         self.code = code
         self.message = message
@@ -43,12 +50,17 @@ class RateLimited(HTTPException):
 
     def __init__(self, retry_after: float, **kwargs: Any):
         self.retry_after = retry_after
-        super().__init__(status=429, code="RATE_LIMITED", message=f"Rate limited, retry after {retry_after}s")
+        super().__init__(
+            status=429,
+            code="RATE_LIMITED",
+            message=f"Rate limited, retry after {retry_after}s",
+        )
 
 
 # =============================================================================
 # Gateway Errors
 # =============================================================================
+
 
 class GatewayException(FluxerException):
     """Base for gateway/WebSocket errors."""
@@ -74,6 +86,7 @@ class SessionInvalid(GatewayException):
 # Client Errors
 # =============================================================================
 
+
 class LoginFailure(FluxerException):
     """Raised when the bot token is invalid."""
 
@@ -92,7 +105,9 @@ _STATUS_MAP: dict[int, type[HTTPException]] = {
 }
 
 
-def http_exception_from_status(status: int, code: str, message: str, **kwargs: Any) -> HTTPException:
+def http_exception_from_status(
+    status: int, code: str, message: str, **kwargs: Any
+) -> HTTPException:
     """Factory to create the right HTTPException subclass for a status code."""
     cls = _STATUS_MAP.get(status, HTTPException)
     if cls is RateLimited:

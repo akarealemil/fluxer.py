@@ -25,7 +25,9 @@ class GatewayPayload:
 
     __slots__ = ("op", "d", "s", "t")
 
-    def __init__(self, op: int, d: Any = None, s: int | None = None, t: str | None = None):
+    def __init__(
+        self, op: int, d: Any = None, s: int | None = None, t: str | None = None
+    ):
         self.op = op
         self.d = d
         self.s = s
@@ -45,7 +47,11 @@ class GatewayPayload:
         return json.dumps(payload)
 
     def __repr__(self) -> str:
-        op_name = GatewayOpcode(self.op).name if self.op in GatewayOpcode.__members__.values() else str(self.op)
+        op_name = (
+            GatewayOpcode(self.op).name
+            if self.op in GatewayOpcode.__members__.values()
+            else str(self.op)
+        )
         return f"<GatewayPayload op={op_name} t={self.t!r} s={self.s}>"
 
 
@@ -98,7 +104,11 @@ class Gateway:
         while not self._is_closed:
             try:
                 await self._connect_and_run(ws_url)
-            except (aiohttp.WSServerHandshakeError, aiohttp.ClientError, asyncio.TimeoutError) as e:
+            except (
+                aiohttp.WSServerHandshakeError,
+                aiohttp.ClientError,
+                asyncio.TimeoutError,
+            ) as e:
                 log.warning("Gateway connection error: %s. Reconnecting in 5s...", e)
                 await asyncio.sleep(5)
             except Exception as e:
@@ -214,7 +224,9 @@ class Gateway:
         try:
             close_code = GatewayCloseCode(code)
             if not close_code.is_reconnectable:
-                log.error("Fatal close code %d (%s), not reconnecting", code, close_code.name)
+                log.error(
+                    "Fatal close code %d (%s), not reconnecting", code, close_code.name
+                )
                 self._is_closed = True
         except ValueError:
             # Unknown close code, try to reconnect
@@ -286,10 +298,13 @@ class Gateway:
         """Periodically send heartbeats. If we miss an ACK, reconnect."""
         try:
             import random
+
             await asyncio.sleep(self._heartbeat_interval * random.random())
             while True:
                 if not self._last_heartbeat_ack:
-                    log.warning("Missed heartbeat ACK, closing connection to trigger reconnect")
+                    log.warning(
+                        "Missed heartbeat ACK, closing connection to trigger reconnect"
+                    )
                     if self._ws and not self._ws.closed:
                         await self._ws.close(code=4000)
                     return

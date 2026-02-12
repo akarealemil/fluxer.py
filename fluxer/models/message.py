@@ -73,7 +73,9 @@ class Message:
         """Edit this message."""
         if self._http is None:
             raise RuntimeError("Message is not bound to an HTTP client")
-        data = await self._http.edit_message(self.channel_id, self.id, content=content, **kwargs)
+        data = await self._http.edit_message(
+            self.channel_id, self.id, content=content, **kwargs
+        )
         return Message.from_data(data, self._http)
 
     async def delete(self) -> None:

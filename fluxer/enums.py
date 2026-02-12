@@ -7,26 +7,28 @@ import enum
 # Fluxer mirrors Discord's opcode structure since it's wire-compatible.
 # =============================================================================
 
+
 class GatewayOpcode(enum.IntEnum):
     """Gateway opcodes define the type of payload being sent/received."""
 
-    DISPATCH = 0           # Server -> Client: An event was dispatched
-    HEARTBEAT = 1          # Bidirectional: Maintain connection / request heartbeat
-    IDENTIFY = 2           # Client -> Server: Start a new session
-    PRESENCE_UPDATE = 3    # Client -> Server: Update client presence/status
-    VOICE_STATE_UPDATE = 4 # Client -> Server: Join/move/leave voice channels
-    RESUME = 6             # Client -> Server: Resume a dropped connection
-    RECONNECT = 7          # Server -> Client: Client should reconnect
+    DISPATCH = 0  # Server -> Client: An event was dispatched
+    HEARTBEAT = 1  # Bidirectional: Maintain connection / request heartbeat
+    IDENTIFY = 2  # Client -> Server: Start a new session
+    PRESENCE_UPDATE = 3  # Client -> Server: Update client presence/status
+    VOICE_STATE_UPDATE = 4  # Client -> Server: Join/move/leave voice channels
+    RESUME = 6  # Client -> Server: Resume a dropped connection
+    RECONNECT = 7  # Server -> Client: Client should reconnect
     REQUEST_GUILD_MEMBERS = 8  # Client -> Server: Request guild member list
-    INVALID_SESSION = 9    # Server -> Client: Session is invalid
-    HELLO = 10             # Server -> Client: Sent on connect, contains heartbeat_interval
-    HEARTBEAT_ACK = 11     # Server -> Client: Acknowledgement of heartbeat
+    INVALID_SESSION = 9  # Server -> Client: Session is invalid
+    HELLO = 10  # Server -> Client: Sent on connect, contains heartbeat_interval
+    HEARTBEAT_ACK = 11  # Server -> Client: Acknowledgement of heartbeat
 
 
 # =============================================================================
 # Gateway Intents
 # Bit flags that tell the gateway which events you want to receive.
 # =============================================================================
+
 
 class Intents(enum.IntFlag):
     """Gateway intents control which events your bot receives.
@@ -59,7 +61,11 @@ class Intents(enum.IntFlag):
         """Returns a sensible default set of intents (excludes privileged ones)."""
         value = cls(0)
         for intent in cls:
-            if intent not in (cls.GUILD_MEMBERS, cls.GUILD_PRESENCES, cls.MESSAGE_CONTENT):
+            if intent not in (
+                cls.GUILD_MEMBERS,
+                cls.GUILD_PRESENCES,
+                cls.MESSAGE_CONTENT,
+            ):
                 value |= intent
         return value
 
@@ -80,6 +86,7 @@ class Intents(enum.IntFlag):
 # =============================================================================
 # Gateway Close Codes
 # =============================================================================
+
 
 class GatewayCloseCode(enum.IntEnum):
     """WebSocket close codes the Fluxer gateway may send."""
@@ -116,6 +123,7 @@ class GatewayCloseCode(enum.IntEnum):
 # =============================================================================
 # Channel Types
 # =============================================================================
+
 
 class ChannelType(enum.IntEnum):
     GUILD_TEXT = 0

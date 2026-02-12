@@ -49,7 +49,9 @@ class User:
         """URL for the user's avatar, or None if they use the default."""
         if self.avatar:
             ext = "gif" if self.avatar.startswith("a_") else "png"
-            return f"https://fluxerusercontent.com/avatars/{self.id}/{self.avatar}.{ext}"
+            return (
+                f"https://fluxerusercontent.com/avatars/{self.id}/{self.avatar}.{ext}"
+            )
         return None
 
     @property

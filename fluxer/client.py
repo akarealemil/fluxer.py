@@ -82,12 +82,14 @@ class Client:
             async def handle_msg(message):
                 ...
         """
+
         def decorator(func: EventHandler) -> EventHandler:
             key = f"on_{event_name}"
             if key not in self._event_handlers:
                 self._event_handlers[key] = []
             self._event_handlers[key].append(func)
             return func
+
         return decorator
 
     # =========================================================================
@@ -248,6 +250,7 @@ class Client:
 
         It creates an event loop, calls start(), and handles cleanup.
         """
+
         async def _runner() -> None:
             try:
                 await self.start(token)
@@ -285,7 +288,9 @@ class Bot(Client):
         async def on_message(message: Message) -> None:
             await self._process_commands(message)
 
-    def command(self, name: str | None = None) -> Callable[[EventHandler], EventHandler]:
+    def command(
+        self, name: str | None = None
+    ) -> Callable[[EventHandler], EventHandler]:
         """Decorator to register a prefix command.
 
         Usage:
@@ -297,10 +302,12 @@ class Bot(Client):
             async def greet(message):
                 await message.reply(f"Hello, {message.author}!")
         """
+
         def decorator(func: EventHandler) -> EventHandler:
             cmd_name = name or func.__name__
             self._commands[cmd_name] = func
             return func
+
         return decorator
 
     async def _process_commands(self, message: Message) -> None:
@@ -311,7 +318,7 @@ class Bot(Client):
             return
 
         # Parse command name and args
-        content = message.content[len(self.command_prefix):]
+        content = message.content[len(self.command_prefix) :]
         parts = content.split(maxsplit=1)
         if not parts:
             return
