@@ -682,3 +682,41 @@ class HTTPClient:
         payload.update(kwargs)
 
         return await self.request(Route("PATCH", "/users/@me"), json=payload)
+
+    # -- Emojis --
+    async def get_guild_emojis(self, guild_id: str) -> list[dict[str, Any]]:
+        """GET /guilds/{guild_id}/emojis — Get all emojis for a guild.
+
+        Returns:
+            List of emoji objects
+        """
+        return await self.request(Route("GET", "/guilds/{guild_id}/emojis", guild_id=guild_id))
+
+    async def get_guild_emoji(self, guild_id: str, emoji_id: str) -> dict[str, Any]:
+        """GET /guilds/{guild_id}/emojis/{emoji_id} — Get a specific emoji.
+
+        Returns:
+            Emoji object
+        """
+        return await self.request(
+            Route("GET", "/guilds/{guild_id}/emojis/{emoji_id}", guild_id=guild_id, emoji_id=emoji_id)
+        )
+
+    async def delete_guild_emoji(
+        self,
+        guild_id: str,
+        emoji_id: str,
+        *,
+        reason: str | None = None,
+    ) -> None:
+        """DELETE /guilds/{guild_id}/emojis/{emoji_id} — Delete an emoji.
+
+        Args:
+            guild_id: Guild ID
+            emoji_id: Emoji ID
+            reason: Reason for deletion (audit log)
+        """
+        await self.request(
+            Route("DELETE", "/guilds/{guild_id}/emojis/{emoji_id}", guild_id=guild_id, emoji_id=emoji_id),
+            reason=reason,
+        )

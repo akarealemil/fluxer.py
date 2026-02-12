@@ -22,7 +22,7 @@ from .errors import (
 )
 
 # Models
-from .models import Channel, Embed, Guild, Message, User
+from .models import Channel, Embed, Emoji, Guild, Message, User
 
 # Utilities
 from .utils import datetime_to_snowflake, snowflake_to_datetime
@@ -50,6 +50,7 @@ __all__ = [
     # Models
     "Channel",
     "Embed",
+    "Emoji",
     "Guild",
     "Message",
     "User",
