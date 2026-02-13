@@ -7,7 +7,7 @@ from typing import Any, Callable, Coroutine
 from .enums import Intents
 from .gateway import Gateway
 from .http import HTTPClient
-from .models import Channel, Guild, Message, User
+from .models import Channel, Guild, Message, User, Webhook
 
 log = logging.getLogger(__name__)
 
@@ -211,6 +211,32 @@ class Client:
         assert self._http is not None
         data = await self._http.get_user(user_id)
         return User.from_data(data, self._http)
+
+    async def fetch_webhook(self, webhook_id: str) -> Webhook:
+        """Fetch a webhook from the API."""
+        assert self._http is not None
+        data = await self._http.get_webhook(webhook_id)
+        return Webhook.from_data(data, self._http)
+
+    async def fetch_channel_webhooks(self, channel_id: str) -> list[Webhook]:
+        """Fetch all webhooks for a channel."""
+        assert self._http is not None
+        data = await self._http.get_channel_webhooks(channel_id)
+        return [Webhook.from_data(w, self._http) for w in data]
+
+    async def fetch_guild_webhooks(self, guild_id: str) -> list[Webhook]:
+        """Fetch all webhooks for a guild."""
+        assert self._http is not None
+        data = await self._http.get_guild_webhooks(guild_id)
+        return [Webhook.from_data(w, self._http) for w in data]
+
+    async def create_webhook(
+        self, channel_id: str, *, name: str, avatar: str | None = None
+    ) -> Webhook:
+        """Create a webhook in a channel."""
+        assert self._http is not None
+        data = await self._http.create_webhook(channel_id, name=name, avatar=avatar)
+        return Webhook.from_data(data, self._http)
 
     # =========================================================================
     # Connection lifecycle
