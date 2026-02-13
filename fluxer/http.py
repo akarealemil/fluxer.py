@@ -690,7 +690,9 @@ class HTTPClient:
         Returns:
             List of emoji objects
         """
-        return await self.request(Route("GET", "/guilds/{guild_id}/emojis", guild_id=guild_id))
+        return await self.request(
+            Route("GET", "/guilds/{guild_id}/emojis", guild_id=guild_id)
+        )
 
     async def get_guild_emoji(self, guild_id: str, emoji_id: str) -> dict[str, Any]:
         """GET /guilds/{guild_id}/emojis/{emoji_id} — Get a specific emoji.
@@ -699,7 +701,12 @@ class HTTPClient:
             Emoji object
         """
         return await self.request(
-            Route("GET", "/guilds/{guild_id}/emojis/{emoji_id}", guild_id=guild_id, emoji_id=emoji_id)
+            Route(
+                "GET",
+                "/guilds/{guild_id}/emojis/{emoji_id}",
+                guild_id=guild_id,
+                emoji_id=emoji_id,
+            )
         )
 
     async def delete_guild_emoji(
@@ -717,6 +724,160 @@ class HTTPClient:
             reason: Reason for deletion (audit log)
         """
         await self.request(
-            Route("DELETE", "/guilds/{guild_id}/emojis/{emoji_id}", guild_id=guild_id, emoji_id=emoji_id),
+            Route(
+                "DELETE",
+                "/guilds/{guild_id}/emojis/{emoji_id}",
+                guild_id=guild_id,
+                emoji_id=emoji_id,
+            ),
             reason=reason,
+        )
+
+    # ~~ Webhooks ~
+    async def get_guild_webhooks(self, guild_id: str) -> list[dict[str, Any]]:
+        """GET /guilds/{guild_id}/webhooks"""
+        return await self.request(
+            Route("GET", "/guilds/{guild_id}/webhooks", guild_id=guild_id)
+        )
+
+    async def get_channel_webhooks(self, channel_id: str) -> list[dict[str, Any]]:
+        """GET /channels/{channel_id}/webhooks"""
+        return await self.request(
+            Route("GET", "/channels/{channel_id}/webhooks", channel_id=channel_id)
+        )
+
+    async def create_webhook(
+        self,
+        channel_id: str,
+        *,
+        name: str,
+        avatar: str | None = None,
+    ) -> dict[str, Any]:
+        """POST /channels/{channel_id}/webhooks"""
+        payload: dict[str, Any] = {"name": name}
+        if avatar is not None:
+            payload["avatar"] = avatar
+        return await self.request(
+            Route("POST", "/channels/{channel_id}/webhooks", channel_id=channel_id),
+            json=payload,
+        )
+
+    async def get_webhook(self, webhook_id: str) -> dict[str, Any]:
+        """GET /webhooks/{webhook_id}"""
+        return await self.request(
+            Route("GET", "/webhooks/{webhook_id}", webhook_id=webhook_id)
+        )
+
+    async def get_webhook_with_token(
+        self, webhook_id: str, token: str
+    ) -> dict[str, Any]:
+        """GET /webhooks/{webhook_id}/{token}"""
+        return await self.request(
+            Route(
+                "GET",
+                "/webhooks/{webhook_id}/{token}",
+                webhook_id=webhook_id,
+                token=token,
+            )
+        )
+
+    async def modify_webhook(
+        self,
+        webhook_id: str,
+        *,
+        name: str | None = None,
+        avatar: str | None = None,
+        channel_id: str | None = None,
+    ) -> dict[str, Any]:
+        """PATCH /webhooks/{webhook_id}"""
+        payload: dict[str, Any] = {}
+        if name is not None:
+            payload["name"] = name
+        if avatar is not None:
+            payload["avatar"] = avatar
+        if channel_id is not None:
+            payload["channel_id"] = channel_id
+        return await self.request(
+            Route("PATCH", "/webhooks/{webhook_id}", webhook_id=webhook_id),
+            json=payload,
+        )
+
+    async def modify_webhook_with_token(
+        self,
+        webhook_id: str,
+        token: str,
+        *,
+        name: str | None = None,
+        avatar: str | None = None,
+        channel_id: str | None = None,
+    ) -> dict[str, Any]:
+        """PATCH /webhooks/{webhook_id}/{token}"""
+        payload: dict[str, Any] = {}
+        if name is not None:
+            payload["name"] = name
+        if avatar is not None:
+            payload["avatar"] = avatar
+        if channel_id is not None:
+            payload["channel_id"] = channel_id
+        return await self.request(
+            Route(
+                "PATCH",
+                "/webhooks/{webhook_id}/{token}",
+                webhook_id=webhook_id,
+                token=token,
+            ),
+            json=payload,
+        )
+
+    async def delete_webhook(
+        self, webhook_id: str, *, reason: str | None = None
+    ) -> None:
+        """DELETE /webhooks/{webhook_id}"""
+        await self.request(
+            Route("DELETE", "/webhooks/{webhook_id}", webhook_id=webhook_id),
+            reason=reason,
+        )
+
+    async def delete_webhook_with_token(self, webhook_id: str, token: str) -> None:
+        """DELETE /webhooks/{webhook_id}/{token}"""
+        await self.request(
+            Route(
+                "DELETE",
+                "/webhooks/{webhook_id}/{token}",
+                webhook_id=webhook_id,
+                token=token,
+            ),
+        )
+
+    async def execute_webhook(
+        self,
+        webhook_id: str,
+        token: str,
+        *,
+        content: str | None = None,
+        embeds: list[dict[str, Any]] | None = None,
+        username: str | None = None,
+        avatar_url: str | None = None,
+        wait: bool = False,
+    ) -> dict[str, Any] | None:
+        """POST /webhooks/{webhook_id}/{token}"""
+        payload: dict[str, Any] = {}
+        if content is not None:
+            payload["content"] = content
+        if embeds is not None:
+            payload["embeds"] = embeds
+        if username is not None:
+            payload["username"] = username
+        if avatar_url is not None:
+            payload["avatar_url"] = avatar_url
+        params = {"wait": "true"} if wait else None
+        return await self.request(
+            Route(
+                "POST",
+                "/webhooks/{webhook_id}/{token}",
+                webhook_id=webhook_id,
+                token=token,
+            ),
+            json=payload,
+            params=params,
         )
