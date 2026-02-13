@@ -3,6 +3,44 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
+if TYPE_CHECKING:
+    from ..http import HTTPClient
+
+
+@dataclass(slots=True)
+class Emoji:
+    """Represents a custom emoji in a Fluxer guild."""
+
+    id: str
+    name: str
+    animated: bool = False
+    guild_id: str | None = None
+    roles: list[str] = field(default_factory=list)
+    managed: bool = False
+    available: bool = True
+
+    _http: HTTPClient | None = field(default=None, repr=False)
+
+    @classmethod
+    def from_data(
+        cls,
+        data: dict[str, Any],
+        http: HTTPClient | None = None,
+        *,
+        guild_id: str | None = None,
+    ) -> Emoji:
+        return cls(
+            id=data["id"],
+            name=data.get("name", ""),
+            animated=data.get("animated", False),
+            guild_id=guild_id or data.get("guild_id"),
+            roles=data.get("roles", []),
+            managed=data.get("managed", False),
+            available=data.get("available", True),
+            _http=http,
+        )
+
+    async def delete(self, *, reason: str | None = None) -> None:
         """Delete this emoji from its guild.
 
         Args:
