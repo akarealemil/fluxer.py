@@ -26,12 +26,14 @@ classifiers = [
 ]
 dependencies = [
     "aiohttp>=3.9.0,<4.0.0",
-    "pytest-cov>=7.0.0",
-    "setuptools>=82.0.0",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "pytest-asyncio"]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=1.3.0",
+    "pytest-cov>=7.0.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/akarealemil/fluxer.py"
@@ -42,6 +44,9 @@ include = ["fluxer*"]
 
 [dependency-groups]
 dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=1.3.0",
+    "pytest-cov>=7.0.0",
     "pyright>=1.1.408",
     "ruff>=0.15.0",
 ]
