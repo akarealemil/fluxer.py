@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
+from ..enums import ChannelType
 from ..utils import snowflake_to_datetime
 
 if TYPE_CHECKING:
@@ -48,6 +49,26 @@ class Channel:
     @property
     def created_at(self) -> datetime:
         return snowflake_to_datetime(self.id)
+
+    @property
+    def is_text_channel(self) -> bool:
+        """Whether this is a guild text channel."""
+        return self.type == ChannelType.GUILD_TEXT
+
+    @property
+    def is_voice_channel(self) -> bool:
+        """Whether this is a voice channel."""
+        return self.type == ChannelType.GUILD_VOICE
+
+    @property
+    def is_dm(self) -> bool:
+        """Whether this is a DM channel."""
+        return self.type == ChannelType.DM
+
+    @property
+    def is_category(self) -> bool:
+        """Whether this is a category channel."""
+        return self.type == ChannelType.GUILD_CATEGORY
 
     async def send(
         self,

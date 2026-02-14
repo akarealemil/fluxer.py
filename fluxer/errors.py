@@ -91,10 +91,6 @@ class LoginFailure(FluxerException):
     """Raised when the bot token is invalid."""
 
 
-class PrivilegedIntentsRequired(FluxerException):
-    """Raised when the bot requests privileged intents it hasn't been granted."""
-
-
 # Map HTTP status codes to exception classes
 _STATUS_MAP: dict[int, type[HTTPException]] = {
     400: BadRequest,

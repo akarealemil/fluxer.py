@@ -7,7 +7,7 @@ from typing import Any, Callable, Coroutine
 from .enums import Intents
 from .gateway import Gateway
 from .http import HTTPClient
-from .models import Channel, Guild, Message, User, Webhook
+from .models import Channel, Guild, Message, User, UserProfile, Webhook
 
 log = logging.getLogger(__name__)
 
@@ -211,6 +211,25 @@ class Client:
         assert self._http is not None
         data = await self._http.get_user(user_id)
         return User.from_data(data, self._http)
+
+    async def fetch_user_profile(
+        self, user_id: str, *, guild_id: str | None = None
+    ) -> UserProfile:
+        """Fetch a user's full profile from the API.
+
+        This returns additional profile information like bio, pronouns, banner, etc.
+        that is not included in the basic user object.
+
+        Args:
+            user_id: The user ID to fetch
+            guild_id: Optional guild ID for guild-specific profile data
+
+        Returns:
+            UserProfile containing the user and their profile information
+        """
+        assert self._http is not None
+        data = await self._http.get_user_profile(user_id, guild_id=guild_id)
+        return UserProfile.from_data(data, self._http)
 
     async def fetch_webhook(self, webhook_id: str) -> Webhook:
         """Fetch a webhook from the API."""

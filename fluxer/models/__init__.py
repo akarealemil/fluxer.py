@@ -4,6 +4,7 @@ from .emoji import Emoji
 from .guild import Guild
 from .member import GuildMember
 from .message import Message
+from .profile import UserProfile
 from .user import User
 from .webhook import Webhook
 
@@ -14,6 +15,7 @@ __all__ = [
     "Guild",
     "GuildMember",
     "Message",
+    "UserProfile",
     "User",
     "Webhook",
 ]

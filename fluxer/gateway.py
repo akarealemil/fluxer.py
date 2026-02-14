@@ -9,6 +9,7 @@ from typing import Any, Callable, Coroutine
 import aiohttp
 
 from .enums import GatewayCloseCode, GatewayOpcode, Intents
+from .errors import GatewayNotConnected
 
 log = logging.getLogger(__name__)
 
@@ -136,7 +137,8 @@ class Gateway:
 
     async def _event_loop(self) -> None:
         """Main receive loop: read messages and handle opcodes."""
-        assert self._ws is not None
+        if self._ws is None:
+            raise GatewayNotConnected("WebSocket connection not established")
 
         async for msg in self._ws:
             if msg.type == aiohttp.WSMsgType.TEXT:

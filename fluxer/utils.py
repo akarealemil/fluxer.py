@@ -36,30 +36,3 @@ def datetime_to_snowflake(dt: datetime) -> int:
     timestamp_ms = int(dt.timestamp() * 1000)
     snowflake = (timestamp_ms - FLUXER_EPOCH) << 22
     return snowflake
-
-
-def _try_int(value: str | int | None) -> int | None:
-    """Safely convert a value to int, or return None."""
-    if value is None:
-        return None
-    return int(value)
-
-
-def _get_mime_type(filename: str) -> str:
-    """Guess MIME type from a filename."""
-    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
-    mime_map = {
-        "png": "image/png",
-        "jpg": "image/jpeg",
-        "jpeg": "image/jpeg",
-        "gif": "image/gif",
-        "webp": "image/webp",
-        "mp4": "video/mp4",
-        "mp3": "audio/mpeg",
-        "ogg": "audio/ogg",
-        "wav": "audio/wav",
-        "txt": "text/plain",
-        "json": "application/json",
-        "pdf": "application/pdf",
-    }
-    return mime_map.get(ext, "application/octet-stream")
