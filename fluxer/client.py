@@ -351,6 +351,7 @@ class Bot(Client):
         def decorator(func: EventHandler) -> EventHandler:
             cmd_name = name or func.__name__
             self._commands[cmd_name] = func
+            self._commands = dict(sorted(self._commands.items(), key=lambda kv: len(kv[0]), reverse=True)) # sorts the dictionary in reverse key length order
             return func
 
         return decorator
@@ -364,16 +365,10 @@ class Bot(Client):
 
         # Parse command name and args
         content = message.content[len(self.command_prefix) :]
-        parts = content.split(maxsplit=1)
-        if not parts:
-            return
-
-        cmd_name = parts[0].lower()
-        # args_str = parts[1] if len(parts) > 1 else ""
-
-        handler = self._commands.get(cmd_name)
-        if handler:
-            try:
-                await handler(message)
-            except Exception:
-                log.exception("Error in command '%s'", cmd_name)
+        for cmd, handler in self._commands.items():
+            if content.startswith(cmd):
+                if handler:
+                    try:
+                        await handler(message)
+                    except Exception:
+                        log.exception("Error in command '%s'", cmd_name)
