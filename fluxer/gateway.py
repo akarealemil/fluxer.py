@@ -86,6 +86,8 @@ class Gateway:
         self._is_closed: bool = False
         self._last_heartbeat_ack: bool = True
 
+        self._tasks = []
+
     @property
     def is_connected(self) -> bool:
         return self._ws is not None and not self._ws.closed
@@ -139,11 +141,11 @@ class Gateway:
         async for msg in self._ws:
             if msg.type == aiohttp.WSMsgType.TEXT:
                 payload = GatewayPayload.from_json(msg.data)
-                await self._handle_payload(payload)
+                await self._handle_payload_task(payload)
 
             elif msg.type == aiohttp.WSMsgType.BINARY:
                 payload = GatewayPayload.from_json(msg.data.decode("utf-8"))
-                await self._handle_payload(payload)
+                await self._handle_payload_task(payload)
 
             elif msg.type in (aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.CLOSING):
                 log.info("WebSocket closing")
@@ -156,6 +158,13 @@ class Gateway:
         if self._ws.close_code:
             await self._handle_close_code(self._ws.close_code)
 
+    async def _handle_payload_task(self, payload: GatewayPayload) -> None:
+        """Simple wrapper class to ensure that gateway payload handling is done truly asynchronously"""
+        task = asyncio.create_task(self._handle_payload(payload))
+        self._tasks.append(task)
+        task.add_done_callback(lambda t: self._tasks.remove(t))
+        task.add_done_callback(lambda t: t.result())
+    
     async def _handle_payload(self, payload: GatewayPayload) -> None:
         """Route an incoming payload by opcode."""
         log.debug("Received: %s", payload)
