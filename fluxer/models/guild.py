@@ -59,7 +59,10 @@ class Guild:
 
         data = await self._http.get_guild_emojis(self.id)
         # Pass guild_id when creating emojis since API doesn't always return it
-        return [Emoji.from_data(emoji_data, self._http, guild_id=self.id) for emoji_data in data]
+        return [
+            Emoji.from_data(emoji_data, self._http, guild_id=self.id)
+            for emoji_data in data
+        ]
 
     def __str__(self) -> str:
         return self.name or f"Guild({self.id})"
