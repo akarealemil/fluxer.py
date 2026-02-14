@@ -1,4 +1,4 @@
-__version__ = "0.1.0"
+__version__ = "0.1.2"
 __title__ = "fluxer.py"
 __author__ = "Emil"
 __license__ = "MIT"
@@ -6,6 +6,7 @@ __license__ = "MIT"
 # Core classes
 from .client import Bot, Client
 from .enums import ChannelType, GatewayCloseCode, GatewayOpcode, Intents
+from .http import HTTPClient
 
 # Errors
 from .errors import (
@@ -22,7 +23,7 @@ from .errors import (
 )
 
 # Models
-from .models import Channel, Embed, Emoji, Guild, Message, User, Webhook
+from .models import Channel, Embed, Emoji, Guild, GuildMember, Message, User, UserProfile, Webhook
 
 # Utilities
 from .utils import datetime_to_snowflake, snowflake_to_datetime
@@ -31,6 +32,7 @@ __all__ = [
     # Client
     "Bot",
     "Client",
+    "HTTPClient",
     # Enums
     "ChannelType",
     "GatewayCloseCode",
@@ -52,8 +54,10 @@ __all__ = [
     "Embed",
     "Emoji",
     "Guild",
+    "GuildMember",
     "Message",
     "User",
+    "UserProfile",
     "Webhook",
     # Utils
     "datetime_to_snowflake",

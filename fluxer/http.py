@@ -270,6 +270,28 @@ class HTTPClient:
         """GET /users/{user_id}"""
         return await self.request(Route("GET", "/users/{user_id}", user_id=user_id))
 
+    async def get_user_profile(
+        self, user_id: int | str, *, guild_id: int | str | None = None
+    ) -> dict[str, Any]:
+        """GET /users/{user_id}/profile — Get a user's full profile.
+
+        This returns additional profile information like bio, pronouns, banner, etc.
+        that is not included in the basic user object.
+
+        Args:
+            user_id: The user ID to fetch
+            guild_id: Optional guild ID for guild-specific profile data
+
+        Returns:
+            Profile object containing:
+            - user: Basic user object
+            - user_profile: Profile data (bio, pronouns, banner, etc.)
+            - premium_type, premium_since, premium_lifetime_sequence
+        """
+        route = Route("GET", "/users/{user_id}/profile", user_id=user_id)
+        params = {"guild_id": str(guild_id)} if guild_id else None
+        return await self.request(route, params=params)
+
     async def get_current_user_guilds(self) -> list[dict[str, Any]]:
         """GET /users/@me/guilds - get guilds the current user is in"""
         return await self.request(Route("GET", "/users/@me/guilds"))
@@ -653,6 +675,47 @@ class HTTPClient:
             Route("DELETE", "/channels/{channel_id}", channel_id=channel_id)
         )
 
+    async def edit_channel_permissions(
+        self,
+        channel_id: int | str,
+        overwrite_id: int | str,
+        *,
+        allow: int | str | None = None,
+        deny: int | str | None = None,
+        type: int = 0,
+        **kwargs: Any,
+    ) -> None:
+        """PUT /channels/{channel_id}/permissions/{overwrite_id} — Edit channel permission overwrites.
+
+        Args:
+            channel_id: Channel ID
+            overwrite_id: Role or user ID
+            allow: Allowed permissions (bitwise)
+            deny: Denied permissions (bitwise)
+            type: 0 for role, 1 for member
+
+        Returns:
+            None (204 No Content)
+        """
+        payload: dict[str, Any] = {"type": type}
+
+        if allow is not None:
+            payload["allow"] = str(allow)
+        if deny is not None:
+            payload["deny"] = str(deny)
+
+        payload.update(kwargs)
+
+        await self.request(
+            Route(
+                "PUT",
+                "/channels/{channel_id}/permissions/{overwrite_id}",
+                channel_id=channel_id,
+                overwrite_id=overwrite_id,
+            ),
+            json=payload,
+        )
+
     # -- User Profile --
     async def modify_current_user(
         self,
@@ -733,6 +796,56 @@ class HTTPClient:
                 guild_id=guild_id,
                 emoji_id=emoji_id,
             )
+        )
+
+    async def create_guild_emoji(
+        self,
+        guild_id: int | str,
+        *,
+        name: str,
+        image: bytes,
+        roles: list[int | str] | None = None,
+        reason: str | None = None,
+    ) -> dict[str, Any]:
+        """POST /guilds/{guild_id}/emojis — Create a new emoji.
+
+        Args:
+            guild_id: Guild ID
+            name: Emoji name
+            image: Image data (PNG/JPG/GIF)
+            roles: List of role IDs that can use this emoji (optional)
+            reason: Reason for creation (audit log)
+
+        Returns:
+            Emoji object
+        """
+        import base64
+
+        # Convert bytes to base64 data URI
+        image_data = base64.b64encode(image).decode("ascii")
+
+        # Detect image format from header
+        if image.startswith(b"\x89PNG"):
+            mime_type = "image/png"
+        elif image.startswith(b"\xff\xd8\xff"):
+            mime_type = "image/jpeg"
+        elif image.startswith(b"GIF89a") or image.startswith(b"GIF87a"):
+            mime_type = "image/gif"
+        else:
+            mime_type = "image/png"  # Default
+
+        payload: dict[str, Any] = {
+            "name": name,
+            "image": f"data:{mime_type};base64,{image_data}",
+        }
+
+        if roles is not None:
+            payload["roles"] = [str(role_id) for role_id in roles]
+
+        return await self.request(
+            Route("POST", "/guilds/{guild_id}/emojis", guild_id=guild_id),
+            json=payload,
+            reason=reason,
         )
 
     async def delete_guild_emoji(
