@@ -371,4 +371,4 @@ class Bot(Client):
                     try:
                         await handler(message)
                     except Exception:
-                        log.exception("Error in command '%s'", cmd_name)
+                        log.exception("Error in command '%s'", cmd)
