@@ -161,7 +161,7 @@ class Gateway:
             await self._handle_close_code(self._ws.close_code)
 
     async def _handle_payload_task(self, payload: GatewayPayload) -> None:
-        """Simple wrapper class to ensure that gateway payload handling is done truly asynchronously"""
+        """Simple wrapper function to ensure that gateway payload handling is done truly asynchronously"""
         task = asyncio.create_task(self._handle_payload(payload))
         self._tasks.append(task)
         task.add_done_callback(lambda t: self._tasks.remove(t))
