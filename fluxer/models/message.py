@@ -9,8 +9,8 @@ from ..utils import snowflake_to_datetime
 if TYPE_CHECKING:
     from ..http import HTTPClient
     from .channel import Channel
+    from .reaction import PartialEmoji, Reaction
     from .user import User
-    from .reaction import Reaction, PartialEmoji
 
 
 @dataclass(slots=True)
@@ -35,8 +35,8 @@ class Message:
 
     @classmethod
     def from_data(cls, data: dict[str, Any], http: HTTPClient | None = None) -> Message:
-        from .user import User
         from .reaction import Reaction
+        from .user import User
 
         author = User.from_data(data["author"], http)
         mentions = [User.from_data(u, http) for u in data.get("mentions", [])]
@@ -96,7 +96,10 @@ class Message:
             message_reference["guild_id"] = str(self.guild_id)
 
         data = await self._http.send_message(
-            self.channel_id, content=content, message_reference=message_reference, **kwargs
+            self.channel_id,
+            content=content,
+            message_reference=message_reference,
+            **kwargs,
         )
         return Message.from_data(data, self._http)
 
@@ -169,7 +172,9 @@ class Message:
         if self._http is None:
             raise RuntimeError("Message is not bound to an HTTP client")
 
-        user_id = user.id if hasattr(user, "id") else user
+        from .user import User as UserModel
+
+        user_id = user.id if isinstance(user, UserModel) else user
         await self._http.delete_reaction(self.channel_id, self.id, emoji, user_id)
 
     async def clear_reactions(self) -> None:

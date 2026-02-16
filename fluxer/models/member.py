@@ -99,7 +99,9 @@ class GuildMember:
         return None
 
     # -- Role Management Methods --
-    async def add_role(self, role_id: int, *, reason: str | None = None, guild_id: int) -> None:
+    async def add_role(
+        self, role_id: int, *, reason: str | None = None, guild_id: int
+    ) -> None:
         """Add a role to this member.
 
         Args:
@@ -117,7 +119,9 @@ class GuildMember:
         if role_id not in self.roles:
             self.roles.append(role_id)
 
-    async def remove_role(self, role_id: int, *, reason: str | None = None, guild_id: int) -> None:
+    async def remove_role(
+        self, role_id: int, *, reason: str | None = None, guild_id: int
+    ) -> None:
         """Remove a role from this member.
 
         Args:
@@ -213,7 +217,7 @@ class GuildMember:
         self,
         *,
         nick: str | None = None,
-        roles: list[int] | None = None,
+        roles: list[int | str] | None = None,
         mute: bool | None = None,
         deaf: bool | None = None,
         channel_id: int | None = None,

@@ -28,8 +28,8 @@ class Client:
         self._gateway: Gateway | None = None
         self._event_handlers: dict[str, list[EventHandler]] = {}
         self._user: User | None = None
-        self._guilds: dict[str, Guild] = {}
-        self._channels: dict[str, Channel] = {}
+        self._guilds: dict[int, Guild] = {}
+        self._channels: dict[int, Channel] = {}
         self._closed: bool = False
 
     @property
@@ -135,7 +135,7 @@ class Client:
                 await self._fire("on_guild_join", guild)
 
             case "GUILD_DELETE":
-                guild_id = data.get("id", "")
+                guild_id = int(data["id"])
                 guild = self._guilds.pop(guild_id, None)
                 await self._fire("on_guild_remove", guild or data)
 
@@ -191,22 +191,17 @@ class Client:
 
     async def _handle_reaction_add(self, data: dict[str, Any]) -> None:
         """Handle MESSAGE_REACTION_ADD event."""
-        from .models.reaction import PartialEmoji, RawReactionActionEvent
+        from .models.reaction import RawReactionActionEvent
 
-        emoji = PartialEmoji.from_data(data["emoji"])
         raw = RawReactionActionEvent.from_data(data, "REACTION_ADD")
 
         # Fire raw event (always fires, even if message not cached)
         await self._fire("on_raw_reaction_add", raw)
 
-        # Try to find the message in cache
-        message_id = str(raw.message_id)
-        message = None
-
-        # Search through channels for the message
+        # Search through channels for the message.
+        # Message caching is not implemented yet.
         for channel in self._channels.values():
-            # Check if channel has a message cache (simple implementation)
-            # In a more complete implementation, you'd have a proper message cache
+            # Placeholder for future message cache lookup.
             pass
 
         # For now, we'll just fire the raw event
@@ -217,9 +212,8 @@ class Client:
 
     async def _handle_reaction_remove(self, data: dict[str, Any]) -> None:
         """Handle MESSAGE_REACTION_REMOVE event."""
-        from .models.reaction import PartialEmoji, RawReactionActionEvent
+        from .models.reaction import RawReactionActionEvent
 
-        emoji = PartialEmoji.from_data(data["emoji"])
         raw = RawReactionActionEvent.from_data(data, "REACTION_REMOVE")
 
         # Fire raw event (always fires, even if message not cached)
@@ -374,7 +368,9 @@ class Client:
         assert self._http is not None
         await self._http.delete_reaction(channel_id, message_id, emoji, user_id)
 
-    async def clear_reactions(self, channel_id: int | str, message_id: int | str) -> None:
+    async def clear_reactions(
+        self, channel_id: int | str, message_id: int | str
+    ) -> None:
         """Remove all reactions from a message.
 
         Args:
@@ -502,7 +498,9 @@ class Bot(Client):
         def decorator(func: EventHandler) -> EventHandler:
             cmd_name = name or func.__name__
             self._commands[cmd_name] = func
-            self._commands = dict(sorted(self._commands.items(), key=lambda kv: len(kv[0]), reverse=True)) # sorts the dictionary in reverse key length order
+            self._commands = dict(
+                sorted(self._commands.items(), key=lambda kv: len(kv[0]), reverse=True)
+            )  # sorts the dictionary in reverse key length order
             return func
 
         return decorator

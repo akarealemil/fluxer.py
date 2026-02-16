@@ -109,7 +109,9 @@ class Reaction:
         if not self._http or not self._message:
             raise RuntimeError("Cannot remove reaction without HTTPClient and Message")
 
-        user_id = user.id if hasattr(user, "id") else user
+        from .user import User as UserModel
+
+        user_id = user.id if isinstance(user, UserModel) else user
         await self._http.delete_reaction(
             self._message.channel_id, self._message.id, self.emoji, user_id
         )
