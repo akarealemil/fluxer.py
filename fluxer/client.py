@@ -554,6 +554,7 @@ class Bot(Client):
                             raise
                     except Exception:
                         log.exception("Error in command '%s'", cmd)
+                    break
 
     async def _invoke_command(
         self, handler: EventHandler, message: Message, args_str: str

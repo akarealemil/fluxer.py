@@ -1163,6 +1163,108 @@ class HTTPClient:
             reason=reason,
         )
 
+    # -- Stickers --
+    async def get_guild_stickers(self, guild_id: int | str) -> list[dict[str, Any]]:
+        """GET /guilds/{guild_id}/stickers — Get all stickers for a guild.
+
+        Returns:
+            List of emoji objects
+        """
+        return await self.request(
+            Route("GET", "/guilds/{guild_id}/stickers", guild_id=guild_id)
+        )
+
+    async def get_guild_sticker(
+        self, guild_id: int | str, sticker_id: int | str
+    ) -> dict[str, Any]:
+        """GET /guilds/{guild_id}/sticker/{sticker_id} — Get a specific sticker.
+
+        Returns:
+            Sticker object
+        """
+        return await self.request(
+            Route(
+                "GET",
+                "/guilds/{guild_id}/sticker/{sticker_id}",
+                guild_id=guild_id,
+                sticker_id=sticker_id,
+            )
+        )
+
+    async def create_guild_sticker(
+        self,
+        guild_id: int | str,
+        *,
+        name: str,
+        image: bytes,
+        roles: list[int | str] | None = None,
+        reason: str | None = None,
+    ) -> dict[str, Any]:
+        """POST /guilds/{guild_id}/stickers — Create a new sticker.
+
+        Args:
+            guild_id: Guild ID
+            name: Sticker name
+            image: Image data (PNG/JPG/GIF)
+            roles: List of role IDs that can use this sticker (optional)
+            reason: Reason for creation (audit log)
+
+        Returns:
+            Sticker object
+        """
+        import base64
+
+        # Convert bytes to base64 data URI
+        image_data = base64.b64encode(image).decode("ascii")
+
+        # Detect image format from header
+        if image.startswith(b"\x89PNG"):
+            mime_type = "image/png"
+        elif image.startswith(b"\xff\xd8\xff"):
+            mime_type = "image/jpeg"
+        elif image.startswith(b"GIF89a") or image.startswith(b"GIF87a"):
+            mime_type = "image/gif"
+        else:
+            mime_type = "image/png"  # Default
+
+        payload: dict[str, Any] = {
+            "name": name,
+            "image": f"data:{mime_type};base64,{image_data}",
+        }
+
+        if roles is not None:
+            payload["roles"] = [str(role_id) for role_id in roles]
+
+        return await self.request(
+            Route("POST", "/guilds/{guild_id}/stickers", guild_id=guild_id),
+            json=payload,
+            reason=reason,
+        )
+
+    async def delete_guild_sticker(
+        self,
+        guild_id: int | str,
+        sticker_id: int | str,
+        *,
+        reason: str | None = None,
+    ) -> None:
+        """DELETE /guilds/{guild_id}/stickers/{sticker_id} — Delete an sticker.
+
+        Args:
+            guild_id: Guild ID
+            sticker_id: Sticker ID
+            reason: Reason for deletion (audit log)
+        """
+        await self.request(
+            Route(
+                "DELETE",
+                "/guilds/{guild_id}/stickers/{stickers_id}",
+                guild_id=guild_id,
+                sticker_id=sticker_id,
+            ),
+            reason=reason,
+        )
+
     # ~~ Webhooks ~
     async def get_guild_webhooks(self, guild_id: int | str) -> list[dict[str, Any]]:
         """GET /guilds/{guild_id}/webhooks"""
