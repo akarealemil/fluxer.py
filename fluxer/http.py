@@ -10,7 +10,7 @@ from .errors import http_exception_from_status
 
 log = logging.getLogger(__name__)
 
-BASE_URL = "https://api.fluxer.app/v1"
+DEFAULT_API_URL = "https://api.fluxer.app/v1"
 
 
 def _get_user_agent() -> str:
@@ -24,17 +24,18 @@ class Route:
     """Represents an API route. Used for rate limit bucketing.
 
     Usage:
-        route = Route("GET", "/channels/{channel_id}/messages", channel_id="123")
+        route = Route("GET", "/channels/{channel_id}/messages", channel_id="123", base_url="https://api.fluxer.app/v1")
         # route.url = "https://api.fluxer.app/v1/channels/123/messages"
         # route.bucket = "GET /channels/{channel_id}/messages"
     """
 
-    def __init__(self, method: str, path: str, **params: Any) -> None:
+    def __init__(self, method: str, path: str, base_url: str = DEFAULT_API_URL, **params: Any) -> None:
         self.method = method
         self.path = path
+        self.base_url = base_url
         # Convert all parameters to strings for URL formatting (handles int IDs)
         self.params = {k: str(v) for k, v in params.items()}
-        self.url = BASE_URL + path.format(**self.params)
+        self.url = self.base_url + path.format(**self.params)
 
         # Rate limit bucket key: method + path template + major params
         # Major params (channel_id, guild_id) get their own buckets
@@ -117,13 +118,24 @@ class HTTPClient:
     Usage:
         async with HTTPClient(token) as http:
             data = await http.request(Route("GET", "/users/@me"))
+
+    Args:
+        token: Bot or user token
+        is_bot: Whether this is a bot token (adds "Bot" prefix to auth header)
+        api_url: Base URL for the API (default: https://api.fluxer.app/v1)
+                 Use this to connect to self-hosted Fluxer instances
     """
 
-    def __init__(self, token: str, *, is_bot: bool = True) -> None:
+    def __init__(self, token: str, *, is_bot: bool = True, api_url: str = DEFAULT_API_URL) -> None:
         self.token = token
         self.is_bot = is_bot
+        self.api_url = api_url.rstrip("/")  # Remove trailing slash if present
         self._session: aiohttp.ClientSession | None = None
         self._rate_limiter = RateLimiter()
+
+    def _route(self, method: str, path: str, **params: Any) -> Route:
+        """Create a Route with this client's API URL."""
+        return Route(method, path, base_url=self.api_url, **params)
 
     async def _ensure_session(self) -> aiohttp.ClientSession:
         if self._session is None or self._session.closed:
@@ -259,16 +271,16 @@ class HTTPClient:
 
     async def get_gateway_bot(self) -> dict[str, Any]:
         """GET /gateway/bot — get gateway URL + sharding info."""
-        return await self.request(Route("GET", "/gateway/bot"))
+        return await self.request(self._route("GET", "/gateway/bot"))
 
     # -- Users --
     async def get_current_user(self) -> dict[str, Any]:
         """GET /users/@me"""
-        return await self.request(Route("GET", "/users/@me"))
+        return await self.request(self._route("GET", "/users/@me"))
 
     async def get_user(self, user_id: int | str) -> dict[str, Any]:
         """GET /users/{user_id}"""
-        return await self.request(Route("GET", "/users/{user_id}", user_id=user_id))
+        return await self.request(self._route("GET", "/users/{user_id}", user_id=user_id))
 
     async def get_user_profile(
         self, user_id: int | str, *, guild_id: int | str | None = None
@@ -288,19 +300,19 @@ class HTTPClient:
             - user_profile: Profile data (bio, pronouns, banner, etc.)
             - premium_type, premium_since, premium_lifetime_sequence
         """
-        route = Route("GET", "/users/{user_id}/profile", user_id=user_id)
+        route = self._route("GET", "/users/{user_id}/profile", user_id=user_id)
         params = {"guild_id": str(guild_id)} if guild_id else None
         return await self.request(route, params=params)
 
     async def get_current_user_guilds(self) -> list[dict[str, Any]]:
         """GET /users/@me/guilds - get guilds the current user is in"""
-        return await self.request(Route("GET", "/users/@me/guilds"))
+        return await self.request(self._route("GET", "/users/@me/guilds"))
 
     # -- Channels --
     async def get_channel(self, channel_id: int | str) -> dict[str, Any]:
         """GET /channels/{channel_id}"""
         return await self.request(
-            Route("GET", "/channels/{channel_id}", channel_id=channel_id)
+            self._route("GET", "/channels/{channel_id}", channel_id=channel_id)
         )
 
     # -- Messages --
@@ -323,7 +335,7 @@ class HTTPClient:
             message_reference: Reference to another message for replies
                 Example: {"message_id": "123456789", "channel_id": "987654321"}
         """
-        route = Route("POST", "/channels/{channel_id}/messages", channel_id=channel_id)
+        route = self._route("POST", "/channels/{channel_id}/messages", channel_id=channel_id)
 
         payload: dict[str, Any] = {}
         if content is not None:
@@ -360,7 +372,7 @@ class HTTPClient:
         message_id: int | str,
     ) -> dict[str, Any]:
         """GET /channels/{channel_id}/messages/{message_id} - Fetch a single message"""
-        route = Route(
+        route = self._route(
             "GET",
             "/channels/{channel_id}/messages/{message_id}",
             channel_id=channel_id,
@@ -383,7 +395,7 @@ class HTTPClient:
         if after:
             params["after"] = after
 
-        route = Route("GET", "/channels/{channel_id}/messages", channel_id=channel_id)
+        route = self._route("GET", "/channels/{channel_id}/messages", channel_id=channel_id)
         return await self.request(route, params=params)
 
     async def edit_message(
@@ -395,7 +407,7 @@ class HTTPClient:
         embeds: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         """PATCH /channels/{channel_id}/messages/{message_id}"""
-        route = Route(
+        route = self._route(
             "PATCH",
             "/channels/{channel_id}/messages/{message_id}",
             channel_id=channel_id,
@@ -410,7 +422,7 @@ class HTTPClient:
 
     async def delete_message(self, channel_id: int | str, message_id: int | str) -> None:
         """DELETE /channels/{channel_id}/messages/{message_id}"""
-        route = Route(
+        route = self._route(
             "DELETE",
             "/channels/{channel_id}/messages/{message_id}",
             channel_id=channel_id,
@@ -421,12 +433,12 @@ class HTTPClient:
     # -- Guilds --
     async def get_guild(self, guild_id: int | str) -> dict[str, Any]:
         """GET /guilds/{guild_id}"""
-        return await self.request(Route("GET", "/guilds/{guild_id}", guild_id=guild_id))
+        return await self.request(self._route("GET", "/guilds/{guild_id}", guild_id=guild_id))
 
     async def get_guild_channels(self, guild_id: int | str) -> list[dict[str, Any]]:
         """GET /guilds/{guild_id}/channels"""
         return await self.request(
-            Route("GET", "/guilds/{guild_id}/channels", guild_id=guild_id)
+            self._route("GET", "/guilds/{guild_id}/channels", guild_id=guild_id)
         )
 
     async def get_guild_member(
@@ -434,7 +446,7 @@ class HTTPClient:
     ) -> dict[str, Any]:
         """GET /guilds/{guild_id}/members/{user_id} — Get a specific guild member."""
         return await self.request(
-            Route(
+            self._route(
                 "GET",
                 "/guilds/{guild_id}/members/{user_id}",
                 guild_id=guild_id,
@@ -451,7 +463,7 @@ class HTTPClient:
             params["after"] = after
 
         return await self.request(
-            Route("GET", "/guilds/{guild_id}/members", guild_id=guild_id), params=params
+            self._route("GET", "/guilds/{guild_id}/members", guild_id=guild_id), params=params
         )
 
     async def create_guild(
@@ -488,11 +500,11 @@ class HTTPClient:
 
             payload["icon"] = f"data:{mime_type};base64,{image_data}"
 
-        return await self.request(Route("POST", "/guilds"), json=payload)
+        return await self.request(self._route("POST", "/guilds"), json=payload)
 
     async def delete_guild(self, guild_id: int | str) -> None:
         """DELETE /guilds/{guild_id}"""
-        await self.request(Route("DELETE", "/guilds/{guild_id}", guild_id=guild_id))
+        await self.request(self._route("DELETE", "/guilds/{guild_id}", guild_id=guild_id))
 
     async def modify_guild(
         self,
@@ -524,14 +536,14 @@ class HTTPClient:
         payload.update(kwargs)
 
         return await self.request(
-            Route("PATCH", "/guilds/{guild_id}", guild_id=guild_id), json=payload
+            self._route("PATCH", "/guilds/{guild_id}", guild_id=guild_id), json=payload
         )
 
     # -- Roles --
     async def get_guild_roles(self, guild_id: int | str) -> list[dict[str, Any]]:
         """GET /guilds/{guild_id}/roles"""
         return await self.request(
-            Route("GET", "/guilds/{guild_id}/roles", guild_id=guild_id)
+            self._route("GET", "/guilds/{guild_id}/roles", guild_id=guild_id)
         )
 
     async def create_guild_role(
@@ -560,7 +572,7 @@ class HTTPClient:
         payload.update(kwargs)
 
         return await self.request(
-            Route("POST", "/guilds/{guild_id}/roles", guild_id=guild_id), json=payload
+            self._route("POST", "/guilds/{guild_id}/roles", guild_id=guild_id), json=payload
         )
 
     async def modify_guild_role(
@@ -592,7 +604,7 @@ class HTTPClient:
         payload.update(kwargs)
 
         return await self.request(
-            Route(
+            self._route(
                 "PATCH",
                 "/guilds/{guild_id}/roles/{role_id}",
                 guild_id=guild_id,
@@ -604,7 +616,7 @@ class HTTPClient:
     async def delete_guild_role(self, guild_id: int | str, role_id: int | str) -> None:
         """DELETE /guilds/{guild_id}/roles/{role_id}"""
         await self.request(
-            Route(
+            self._route(
                 "DELETE",
                 "/guilds/{guild_id}/roles/{role_id}",
                 guild_id=guild_id,
@@ -633,7 +645,7 @@ class HTTPClient:
             None (204 No Content)
         """
         await self.request(
-            Route(
+            self._route(
                 "PUT",
                 "/guilds/{guild_id}/members/{user_id}/roles/{role_id}",
                 guild_id=guild_id,
@@ -663,7 +675,7 @@ class HTTPClient:
             None (204 No Content)
         """
         await self.request(
-            Route(
+            self._route(
                 "DELETE",
                 "/guilds/{guild_id}/members/{user_id}/roles/{role_id}",
                 guild_id=guild_id,
@@ -692,7 +704,7 @@ class HTTPClient:
             None (204 No Content)
         """
         await self.request(
-            Route(
+            self._route(
                 "DELETE",
                 "/guilds/{guild_id}/members/{user_id}",
                 guild_id=guild_id,
@@ -729,7 +741,7 @@ class HTTPClient:
             payload["delete_message_seconds"] = delete_message_seconds
 
         await self.request(
-            Route(
+            self._route(
                 "PUT",
                 "/guilds/{guild_id}/bans/{user_id}",
                 guild_id=guild_id,
@@ -757,7 +769,7 @@ class HTTPClient:
             None (204 No Content)
         """
         await self.request(
-            Route(
+            self._route(
                 "DELETE",
                 "/guilds/{guild_id}/bans/{user_id}",
                 guild_id=guild_id,
@@ -790,7 +802,7 @@ class HTTPClient:
         }
 
         return await self.request(
-            Route(
+            self._route(
                 "PATCH",
                 "/guilds/{guild_id}/members/{user_id}",
                 guild_id=guild_id,
@@ -848,7 +860,7 @@ class HTTPClient:
         payload.update(kwargs)
 
         return await self.request(
-            Route(
+            self._route(
                 "PATCH",
                 "/guilds/{guild_id}/members/{user_id}",
                 guild_id=guild_id,
@@ -909,7 +921,7 @@ class HTTPClient:
         payload.update(kwargs)
 
         return await self.request(
-            Route("POST", "/guilds/{guild_id}/channels", guild_id=guild_id),
+            self._route("POST", "/guilds/{guild_id}/channels", guild_id=guild_id),
             json=payload,
         )
 
@@ -944,14 +956,14 @@ class HTTPClient:
         payload.update(kwargs)
 
         return await self.request(
-            Route("PATCH", "/channels/{channel_id}", channel_id=channel_id),
+            self._route("PATCH", "/channels/{channel_id}", channel_id=channel_id),
             json=payload,
         )
 
     async def delete_channel(self, channel_id: int | str) -> None:
         """DELETE /channels/{channel_id}"""
         await self.request(
-            Route("DELETE", "/channels/{channel_id}", channel_id=channel_id)
+            self._route("DELETE", "/channels/{channel_id}", channel_id=channel_id)
         )
 
     async def edit_channel_permissions(
@@ -986,7 +998,7 @@ class HTTPClient:
         payload.update(kwargs)
 
         await self.request(
-            Route(
+            self._route(
                 "PUT",
                 "/channels/{channel_id}/permissions/{overwrite_id}",
                 channel_id=channel_id,
@@ -1049,7 +1061,7 @@ class HTTPClient:
 
         payload.update(kwargs)
 
-        return await self.request(Route("PATCH", "/users/@me"), json=payload)
+        return await self.request(self._route("PATCH", "/users/@me"), json=payload)
 
     # -- Emojis --
     async def get_guild_emojis(self, guild_id: int | str) -> list[dict[str, Any]]:
@@ -1059,7 +1071,7 @@ class HTTPClient:
             List of emoji objects
         """
         return await self.request(
-            Route("GET", "/guilds/{guild_id}/emojis", guild_id=guild_id)
+            self._route("GET", "/guilds/{guild_id}/emojis", guild_id=guild_id)
         )
 
     async def get_guild_emoji(self, guild_id: int | str, emoji_id: int | str) -> dict[str, Any]:
@@ -1069,7 +1081,7 @@ class HTTPClient:
             Emoji object
         """
         return await self.request(
-            Route(
+            self._route(
                 "GET",
                 "/guilds/{guild_id}/emojis/{emoji_id}",
                 guild_id=guild_id,
@@ -1122,7 +1134,7 @@ class HTTPClient:
             payload["roles"] = [str(role_id) for role_id in roles]
 
         return await self.request(
-            Route("POST", "/guilds/{guild_id}/emojis", guild_id=guild_id),
+            self._route("POST", "/guilds/{guild_id}/emojis", guild_id=guild_id),
             json=payload,
             reason=reason,
         )
@@ -1142,7 +1154,7 @@ class HTTPClient:
             reason: Reason for deletion (audit log)
         """
         await self.request(
-            Route(
+            self._route(
                 "DELETE",
                 "/guilds/{guild_id}/emojis/{emoji_id}",
                 guild_id=guild_id,
@@ -1155,13 +1167,13 @@ class HTTPClient:
     async def get_guild_webhooks(self, guild_id: int | str) -> list[dict[str, Any]]:
         """GET /guilds/{guild_id}/webhooks"""
         return await self.request(
-            Route("GET", "/guilds/{guild_id}/webhooks", guild_id=guild_id)
+            self._route("GET", "/guilds/{guild_id}/webhooks", guild_id=guild_id)
         )
 
     async def get_channel_webhooks(self, channel_id: int | str) -> list[dict[str, Any]]:
         """GET /channels/{channel_id}/webhooks"""
         return await self.request(
-            Route("GET", "/channels/{channel_id}/webhooks", channel_id=channel_id)
+            self._route("GET", "/channels/{channel_id}/webhooks", channel_id=channel_id)
         )
 
     async def create_webhook(
@@ -1176,14 +1188,14 @@ class HTTPClient:
         if avatar is not None:
             payload["avatar"] = avatar
         return await self.request(
-            Route("POST", "/channels/{channel_id}/webhooks", channel_id=channel_id),
+            self._route("POST", "/channels/{channel_id}/webhooks", channel_id=channel_id),
             json=payload,
         )
 
     async def get_webhook(self, webhook_id: int | str) -> dict[str, Any]:
         """GET /webhooks/{webhook_id}"""
         return await self.request(
-            Route("GET", "/webhooks/{webhook_id}", webhook_id=webhook_id)
+            self._route("GET", "/webhooks/{webhook_id}", webhook_id=webhook_id)
         )
 
     async def get_webhook_with_token(
@@ -1191,7 +1203,7 @@ class HTTPClient:
     ) -> dict[str, Any]:
         """GET /webhooks/{webhook_id}/{token}"""
         return await self.request(
-            Route(
+            self._route(
                 "GET",
                 "/webhooks/{webhook_id}/{token}",
                 webhook_id=webhook_id,
@@ -1216,7 +1228,7 @@ class HTTPClient:
         if channel_id is not None:
             payload["channel_id"] = channel_id
         return await self.request(
-            Route("PATCH", "/webhooks/{webhook_id}", webhook_id=webhook_id),
+            self._route("PATCH", "/webhooks/{webhook_id}", webhook_id=webhook_id),
             json=payload,
         )
 
@@ -1238,7 +1250,7 @@ class HTTPClient:
         if channel_id is not None:
             payload["channel_id"] = channel_id
         return await self.request(
-            Route(
+            self._route(
                 "PATCH",
                 "/webhooks/{webhook_id}/{token}",
                 webhook_id=webhook_id,
@@ -1252,14 +1264,14 @@ class HTTPClient:
     ) -> None:
         """DELETE /webhooks/{webhook_id}"""
         await self.request(
-            Route("DELETE", "/webhooks/{webhook_id}", webhook_id=webhook_id),
+            self._route("DELETE", "/webhooks/{webhook_id}", webhook_id=webhook_id),
             reason=reason,
         )
 
     async def delete_webhook_with_token(self, webhook_id: int | str, token: str) -> None:
         """DELETE /webhooks/{webhook_id}/{token}"""
         await self.request(
-            Route(
+            self._route(
                 "DELETE",
                 "/webhooks/{webhook_id}/{token}",
                 webhook_id=webhook_id,
@@ -1290,7 +1302,7 @@ class HTTPClient:
             payload["avatar_url"] = avatar_url
         params = {"wait": "true"} if wait else None
         return await self.request(
-            Route(
+            self._route(
                 "POST",
                 "/webhooks/{webhook_id}/{token}",
                 webhook_id=webhook_id,
@@ -1356,7 +1368,7 @@ class HTTPClient:
         """
         emoji_str = self._emoji_to_url_format(emoji)
         await self.request(
-            Route(
+            self._route(
                 "PUT",
                 "/channels/{channel_id}/messages/{message_id}/reactions/{emoji}/@me",
                 channel_id=channel_id,
@@ -1384,7 +1396,7 @@ class HTTPClient:
         """
         emoji_str = self._emoji_to_url_format(emoji)
         await self.request(
-            Route(
+            self._route(
                 "DELETE",
                 "/channels/{channel_id}/messages/{message_id}/reactions/{emoji}/{user_id}",
                 channel_id=channel_id,
@@ -1423,7 +1435,7 @@ class HTTPClient:
             params["after"] = after
 
         return await self.request(
-            Route(
+            self._route(
                 "GET",
                 "/channels/{channel_id}/messages/{message_id}/reactions/{emoji}",
                 channel_id=channel_id,
@@ -1447,7 +1459,7 @@ class HTTPClient:
             message_id: Message ID
         """
         await self.request(
-            Route(
+            self._route(
                 "DELETE",
                 "/channels/{channel_id}/messages/{message_id}/reactions",
                 channel_id=channel_id,
@@ -1472,7 +1484,7 @@ class HTTPClient:
         """
         emoji_str = self._emoji_to_url_format(emoji)
         await self.request(
-            Route(
+            self._route(
                 "DELETE",
                 "/channels/{channel_id}/messages/{message_id}/reactions/{emoji}",
                 channel_id=channel_id,

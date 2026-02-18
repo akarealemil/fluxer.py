@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import logging
 from typing import Any, Callable, Coroutine
 
@@ -20,10 +21,21 @@ class Client:
 
     This gives you full control over the gateway lifecycle.
     For most bots, use the Bot subclass instead.
+
+    Args:
+        intents: Gateway intents to request (default: Intents.default())
+        api_url: Base URL for the Fluxer API (default: https://api.fluxer.app/v1)
+                 Use this to connect to self-hosted Fluxer instances
     """
 
-    def __init__(self, *, intents: Intents = Intents.default()) -> None:
+    def __init__(
+        self,
+        *,
+        intents: Intents = Intents.default(),
+        api_url: str | None = None
+    ) -> None:
         self.intents = intents
+        self.api_url = api_url
         self._http: HTTPClient | None = None
         self._gateway: Gateway | None = None
         self._event_handlers: dict[str, list[EventHandler]] = {}
@@ -412,7 +424,12 @@ class Client:
 
         Use this if you're managing your own event loop.
         """
-        self._http = HTTPClient(token)
+        # Create HTTP client with custom API URL if provided
+        if self.api_url:
+            self._http = HTTPClient(token, api_url=self.api_url)
+        else:
+            self._http = HTTPClient(token)
+
         self._gateway = Gateway(
             http_client=self._http,
             token=token,
@@ -462,6 +479,12 @@ class Bot(Client):
 
     Adds prefix command support, cog support, and other bot-specific features.
     This is the recommended class for most bot use cases.
+
+    Args:
+        command_prefix: Prefix for text commands (default: "!")
+        intents: Gateway intents to request (default: Intents.default())
+        api_url: Base URL for the Fluxer API (default: https://api.fluxer.app/v1)
+                 Use this to connect to self-hosted Fluxer instances
     """
 
     def __init__(
@@ -469,8 +492,9 @@ class Bot(Client):
         *,
         command_prefix: str = "!",
         intents: Intents = Intents.default(),
+        api_url: str | None = None,
     ) -> None:
-        super().__init__(intents=intents)
+        super().__init__(intents=intents, api_url=api_url)
         self.command_prefix = command_prefix
         self._commands: dict[str, EventHandler] = {}
         self._cogs: dict[str, Any] = {}  # Store loaded cogs
@@ -519,9 +543,124 @@ class Bot(Client):
             if content.startswith(cmd):
                 if handler:
                     try:
-                        await handler(message)
+                        # Parse arguments based on function signature
+                        args_str = content[len(cmd):].strip()
+                        await self._invoke_command(handler, message, args_str)
+                    except TypeError as e:
+                        # Handle missing required arguments
+                        if "missing" in str(e) and "required" in str(e):
+                            await message.reply(f"❌ Error: {e}")
+                        else:
+                            raise
                     except Exception:
                         log.exception("Error in command '%s'", cmd)
+
+    async def _invoke_command(
+        self, handler: EventHandler, message: Message, args_str: str
+    ) -> None:
+        """Parse arguments and invoke a command handler.
+
+        Supports:
+        - Positional arguments: async def cmd(message, arg1, arg2)
+        - Keyword-only arguments: async def cmd(message, *, text)
+        - Type hints: async def cmd(message, count: int)
+        - Default values: async def cmd(message, text: str = "default")
+        """
+        sig = inspect.signature(handler)
+        params = list(sig.parameters.values())
+
+        # First parameter is always the message
+        if not params or params[0].name != "message":
+            # If function doesn't take message as first param, just pass message
+            await handler(message)
+            return
+
+        # Remove the message parameter from processing
+        params = params[1:]
+
+        # Check if there are any parameters that need parsing
+        if not params:
+            await handler(message)
+            return
+
+        # Check for keyword-only parameters (indicated by * in signature)
+        # e.g., async def say(message, *, text: str)
+        has_kwonly = any(
+            p.kind == inspect.Parameter.KEYWORD_ONLY for p in params
+        )
+
+        if has_kwonly and len(params) == 1:
+            # Single keyword-only argument captures all remaining text
+            param = params[0]
+
+            # Check if argument was provided
+            if not args_str and param.default == inspect.Parameter.empty:
+                raise TypeError(
+                    f"{handler.__name__}() missing 1 required keyword-only argument: '{param.name}'"
+                )
+
+            # Use default if no args provided
+            if not args_str:
+                await handler(message)
+                return
+
+            # Convert to the appropriate type if type hint exists
+            value = self._convert_argument(args_str, param.annotation)
+            await handler(message, **{param.name: value})
+        else:
+            # Multiple positional or mixed arguments
+            # Split args_str into individual arguments
+            args = args_str.split() if args_str else []
+
+            # Build the argument list
+            call_args = [message]
+            call_kwargs = {}
+
+            for i, param in enumerate(params):
+                if param.kind == inspect.Parameter.KEYWORD_ONLY:
+                    # Keyword-only args capture remaining text
+                    remaining = " ".join(args[i:]) if i < len(args) else ""
+                    if not remaining and param.default == inspect.Parameter.empty:
+                        raise TypeError(
+                            f"{handler.__name__}() missing 1 required keyword-only argument: '{param.name}'"
+                        )
+                    if remaining:
+                        value = self._convert_argument(remaining, param.annotation)
+                        call_kwargs[param.name] = value
+                    break
+                else:
+                    # Positional argument
+                    if i < len(args):
+                        value = self._convert_argument(args[i], param.annotation)
+                        call_args.append(value)
+                    elif param.default != inspect.Parameter.empty:
+                        # Use default value
+                        break
+                    else:
+                        raise TypeError(
+                            f"{handler.__name__}() missing 1 required positional argument: '{param.name}'"
+                        )
+
+            await handler(*call_args, **call_kwargs)
+
+    def _convert_argument(self, value: str, annotation: Any) -> Any:
+        """Convert a string argument to the appropriate type based on annotation."""
+        if annotation == inspect.Parameter.empty or annotation == str:
+            return value
+
+        try:
+            if annotation == int:
+                return int(value)
+            elif annotation == float:
+                return float(value)
+            elif annotation == bool:
+                return value.lower() in ("true", "1", "yes", "y")
+            else:
+                # Try to call the annotation as a constructor
+                return annotation(value)
+        except (ValueError, TypeError):
+            # If conversion fails, return as string
+            return value
 
     # =========================================================================
     # Cog management
