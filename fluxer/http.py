@@ -384,6 +384,16 @@ class HTTPClient:
             message_id=message_id,
         )
         await self.request(route)
+        
+    async def add_reaction(self, channel_id: int | str, message_id: int | str, emoji: str) -> None:
+        """PUT /channels/{channel_id}/messages/{message_id}/reactions/{emoji}/@me"""
+        route = Route(
+            "PUT", "/channels/{channel_id}/messages/{message_id}/reactions/{emoji}/@me",
+            channel_id=channel_id,
+            message_id=message_id,
+            emoji=emoji
+        )
+        await self.request(route)
 
     # -- Guilds --
     async def get_guild(self, guild_id: int | str) -> dict[str, Any]:

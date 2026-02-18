@@ -83,3 +83,9 @@ class Message:
         if self._http is None:
             raise RuntimeError("Message is not bound to an HTTP client")
         await self._http.delete_message(self.channel_id, self.id)
+
+    async def add_reaction(self, emoji: str) -> None:
+        """Add reaction to this message."""
+        if self._http is None:
+            raise RuntimeError("Message is not bound to an HTTP client")
+        await self._http.add_reaction(self.channel_id, self.id, emoji)
