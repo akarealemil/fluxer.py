@@ -516,12 +516,12 @@ class Bot(Client):
 
         Usage:
             @bot.command()
-            async def ping(message):
-                await message.reply("Pong!")
+            async def ping(ctx):
+                await ctx.reply("Pong!")
 
             @bot.command(name="hello")
-            async def greet(message):
-                await message.reply(f"Hello, {message.author}!")
+            async def greet(ctx):
+                await ctx.reply(f"Hello, {ctx.author}!")
         """
 
         def decorator(func: EventHandler) -> EventHandler:
@@ -567,21 +567,21 @@ class Bot(Client):
         """Parse arguments and invoke a command handler.
 
         Supports:
-        - Positional arguments: async def cmd(message, arg1, arg2)
-        - Keyword-only arguments: async def cmd(message, *, text)
-        - Type hints: async def cmd(message, count: int)
-        - Default values: async def cmd(message, text: str = "default")
+        - Positional arguments: async def cmd(ctx, arg1, arg2)
+        - Keyword-only arguments: async def cmd(ctx, *, message)
+        - Type hints: async def cmd(ctx, count: int)
+        - Default values: async def cmd(ctx, message: str = "default")
         """
         sig = inspect.signature(handler)
         params = list(sig.parameters.values())
 
-        # First parameter is always the message
-        if not params or params[0].name != "message":
-            # If function doesn't take message as first param, just pass message
+        # First parameter is always the ctx (context/message)
+        if not params or params[0].name != "ctx":
+            # If function doesn't take ctx as first param, just pass message
             await handler(message)
             return
 
-        # Remove the message parameter from processing
+        # Remove the ctx parameter from processing
         params = params[1:]
 
         # Check if there are any parameters that need parsing
@@ -590,7 +590,7 @@ class Bot(Client):
             return
 
         # Check for keyword-only parameters (indicated by * in signature)
-        # e.g., async def say(message, *, text: str)
+        # e.g., async def say(ctx, *, message: str)
         has_kwonly = any(
             p.kind == inspect.Parameter.KEYWORD_ONLY for p in params
         )
@@ -681,8 +681,8 @@ class Bot(Client):
         Example:
             class MyCog(Cog):
                 @Cog.command()
-                async def hello(self, message):
-                    await message.reply("Hello!")
+                async def hello(self, ctx):
+                    await ctx.reply("Hello!")
 
             bot = Bot()
             await bot.add_cog(MyCog(bot))

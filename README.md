@@ -18,8 +18,8 @@ async def on_ready():
 
 
 @bot.command()
-async def ping(message):
-    await message.reply("Pong!")
+async def ping(ctx):
+    await ctx.reply("Pong!")
 
 
 if __name__ == "__main__":

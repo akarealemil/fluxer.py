@@ -26,8 +26,8 @@ class Cog:
                 super().__init__(bot)
 
             @Cog.command()
-            async def hello(self, message):
-                await message.reply("Hello from MyCog!")
+            async def hello(self, ctx):
+                await ctx.reply("Hello from MyCog!")
 
             @Cog.listener()
             async def on_message(self, message):
@@ -78,12 +78,12 @@ class Cog:
 
         Example:
             @Cog.command()
-            async def ping(self, message):
-                await message.reply("Pong!")
+            async def ping(self, ctx):
+                await ctx.reply("Pong!")
 
             @Cog.command(name="hi")
-            async def hello(self, message):
-                await message.reply("Hello!")
+            async def hello(self, ctx):
+                await ctx.reply("Hello!")
         """
 
         def decorator(func: EventHandler) -> EventHandler:

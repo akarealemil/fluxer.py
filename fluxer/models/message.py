@@ -74,6 +74,26 @@ class Message:
         """The channel this message was sent in (if cached)."""
         return self._channel
 
+    async def send(self, content: str | None = None, **kwargs: Any) -> Message:
+        """Send a message to the same channel (without replying).
+
+        Args:
+            content: The message content.
+            **kwargs: Additional arguments to pass to send_message (embed, embeds, etc.)
+
+        Returns:
+            The created Message object.
+        """
+        if self._http is None:
+            raise RuntimeError("Message is not bound to an HTTP client")
+
+        data = await self._http.send_message(
+            self.channel_id,
+            content=content,
+            **kwargs,
+        )
+        return Message.from_data(data, self._http)
+
     async def reply(self, content: str | None = None, **kwargs: Any) -> Message:
         """Reply to this message with a message reference.
 
