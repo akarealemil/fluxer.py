@@ -1,8 +1,12 @@
 from __future__ import annotations
 
 import asyncio
+import importlib
+import importlib.util
 import inspect
 import logging
+import sys
+from pathlib import Path
 from typing import Any, Callable, Coroutine
 
 from .enums import Intents
@@ -498,6 +502,7 @@ class Bot(Client):
         self.command_prefix = command_prefix
         self._commands: dict[str, EventHandler] = {}
         self._cogs: dict[str, Any] = {}  # Store loaded cogs
+        self._extensions: dict[str, Any] = {}  # Store loaded extensions
 
         # Auto-register the command dispatcher
         @self.event
@@ -792,3 +797,121 @@ class Bot(Client):
     def cogs(self) -> dict[str, Any]:
         """Get all loaded cogs."""
         return self._cogs.copy()
+
+    # =========================================================================
+    # Extension management (discord.py compatible)
+    # =========================================================================
+
+    async def load_extension(self, name: str) -> None:
+        """Load an extension (module) containing cogs and commands.
+
+        This works like discord.py's load_extension method. The extension must have
+        a setup() function that takes the bot instance as an argument.
+
+        Args:
+            name: The module path (e.g., "cogs.moderation" or "my_cogs.fun")
+
+        Example:
+            # In cogs/moderation.py:
+            from fluxer import Cog
+
+            class ModerationCog(Cog):
+                @Cog.command()
+                async def ban(self, message):
+                    await message.reply("Ban command!")
+
+            async def setup(bot):
+                await bot.add_cog(ModerationCog(bot))
+
+            # In your main bot file:
+            await bot.load_extension("cogs.moderation")
+        """
+        if name in self._extensions:
+            raise ValueError(f"Extension '{name}' is already loaded")
+
+        # Import the module
+        try:
+            module = importlib.import_module(name)
+        except ImportError as e:
+            raise ImportError(f"Failed to import extension '{name}': {e}") from e
+
+        # Check if module has a setup function
+        if not hasattr(module, "setup"):
+            raise AttributeError(
+                f"Extension '{name}' is missing a setup() function. "
+                "Extensions must have an async setup(bot) function."
+            )
+
+        setup = module.setup
+
+        # Call the setup function
+        try:
+            if inspect.iscoroutinefunction(setup):
+                await setup(self)
+            else:
+                setup(self)
+        except Exception as e:
+            raise RuntimeError(
+                f"Failed to load extension '{name}': {e}"
+            ) from e
+
+        # Store the module
+        self._extensions[name] = module
+        log.info("Loaded extension: %s", name)
+
+    async def unload_extension(self, name: str) -> None:
+        """Unload an extension.
+
+        Args:
+            name: The module path of the extension to unload.
+
+        Example:
+            await bot.unload_extension("cogs.moderation")
+        """
+        if name not in self._extensions:
+            raise ValueError(f"Extension '{name}' is not loaded")
+
+        module = self._extensions[name]
+
+        # Call teardown function if it exists
+        if hasattr(module, "teardown"):
+            teardown = module.teardown
+            try:
+                if inspect.iscoroutinefunction(teardown):
+                    await teardown(self)
+                else:
+                    teardown(self)
+            except Exception:
+                log.exception("Error in teardown for extension '%s'", name)
+
+        # Remove from sys.modules to allow fresh reload
+        if name in sys.modules:
+            del sys.modules[name]
+
+        # Remove from extensions dict
+        del self._extensions[name]
+        log.info("Unloaded extension: %s", name)
+
+    async def reload_extension(self, name: str) -> None:
+        """Reload an extension by unloading and loading it again.
+
+        This is useful during development to reload code changes without restarting.
+
+        Args:
+            name: The module path of the extension to reload.
+
+        Example:
+            await bot.reload_extension("cogs.moderation")
+        """
+        if name not in self._extensions:
+            raise ValueError(f"Extension '{name}' is not loaded")
+
+        # Unload and reload
+        await self.unload_extension(name)
+        await self.load_extension(name)
+        log.info("Reloaded extension: %s", name)
+
+    @property
+    def extensions(self) -> dict[str, Any]:
+        """Get all loaded extensions."""
+        return self._extensions.copy()
