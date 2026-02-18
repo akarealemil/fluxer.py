@@ -5,6 +5,7 @@ __license__ = "MIT"
 
 # Core classes
 from .client import Bot, Client
+from .cog import Cog
 from .enums import ChannelType, GatewayCloseCode, GatewayOpcode, Intents
 from .http import HTTPClient
 
@@ -32,6 +33,7 @@ __all__ = [
     # Client
     "Bot",
     "Client",
+    "Cog",
     "HTTPClient",
     # Enums
     "ChannelType",

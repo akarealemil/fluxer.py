@@ -76,6 +76,8 @@ class Channel:
         *,
         embed: Embed | None = None,
         embeds: list[Embed] | None = None,
+        files: list[dict[str, Any]] | None = None,
+        message_reference: dict[str, Any] | None = None,
     ) -> Message:
         """Send a message to this channel.
 
@@ -83,6 +85,10 @@ class Channel:
             content: Text content of the message.
             embed: A single embed to include.
             embeds: Multiple embeds to include.
+            files: List of file objects to attach. Each file should be a dict with
+                'data' (file bytes) and 'filename' (str) keys.
+                Example: [{"data": file_bytes, "filename": "image.png"}]
+            message_reference: Reference to another message for replies.
 
         Returns:
             The created Message object.
@@ -100,8 +106,29 @@ class Channel:
             embed_list = [e.to_dict() for e in embeds]
 
         data = await self._http.send_message(
-            self.id, content=content, embeds=embed_list
+            self.id,
+            content=content,
+            embeds=embed_list,
+            files=files,
+            message_reference=message_reference,
         )
+        return Message.from_data(data, self._http)
+
+    async def fetch_message(self, message_id: int | str) -> Message:
+        """Fetch a message from this channel by ID.
+
+        Args:
+            message_id: The message ID to fetch.
+
+        Returns:
+            The fetched Message object.
+        """
+        from .message import Message
+
+        if self._http is None:
+            raise RuntimeError("Channel is not bound to an HTTP client")
+
+        data = await self._http.get_message(self.id, message_id)
         return Message.from_data(data, self._http)
 
     def __eq__(self, other: object) -> bool:
