@@ -3,8 +3,10 @@ from __future__ import annotations
 import asyncio
 import logging
 from typing import Any
+from .models.embed import Embed
 
 import aiohttp
+import json as json_mod
 
 from .errors import http_exception_from_status
 
@@ -321,7 +323,8 @@ class HTTPClient:
         channel_id: int | str,
         *,
         content: str | None = None,
-        embeds: list[dict[str, Any]] | None = None,
+        embed: Any | None = None,  # NEW (single embed support)
+        embeds: list[Any] | None = None,
         files: list[Any] | None = None,
         message_reference: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
@@ -330,41 +333,68 @@ class HTTPClient:
         Args:
             channel_id: The channel to send the message to
             content: The message content
-            embeds: List of embed objects
+            embed: Single embed object (optional)
+            embeds: List of embed objects (Embed or dict)
             files: List of file objects to attach
             message_reference: Reference to another message for replies
                 Example: {"message_id": "123456789", "channel_id": "987654321"}
         """
-        route = self._route("POST", "/channels/{channel_id}/messages", channel_id=channel_id)
+        route = self._route(
+            "POST",
+            "/channels/{channel_id}/messages",
+            channel_id=channel_id,
+        )
 
         payload: dict[str, Any] = {}
+
         if content is not None:
             payload["content"] = content
+
+        # --- Normalize embed(s) ---
+
+        # Support single embed param
+        if embed is not None:
+            embeds = [embed]
+
+        # Normalize all embeds
         if embeds is not None:
-            payload["embeds"] = embeds
+            normalized = []
+            for e in embeds:
+                if isinstance(e, Embed):
+                    normalized.append(e.to_dict())
+                else:
+                    normalized.append(e)
+            payload["embeds"] = normalized
+
         if message_reference is not None:
             payload["message_reference"] = message_reference
 
+        # --- File handling ---
         if files:
-            # Use multipart form data for file uploads
-            # Discord/Fluxer API requires an 'attachments' field in the JSON payload
-            # that describes each file by id and filename
             form = aiohttp.FormData()
-            import json as json_mod
 
-            # Add attachment metadata to payload
             payload["attachments"] = [
-                {"id": i, "filename": file["filename"]} for i, file in enumerate(files)
+                {"id": i, "filename": file["filename"]}
+                for i, file in enumerate(files)
             ]
 
             form.add_field(
-                "payload_json", json_mod.dumps(payload), content_type="application/json"
+                "payload_json",
+                json_mod.dumps(payload),
+                content_type="application/json",
             )
+
             for i, file in enumerate(files):
-                form.add_field(f"files[{i}]", file["data"], filename=file["filename"])
+                form.add_field(
+                    f"files[{i}]",
+                    file["data"],
+                    filename=file["filename"],
+                )
+
             return await self.request(route, data=form)
 
         return await self.request(route, json=payload)
+
 
     async def get_message(
         self,
