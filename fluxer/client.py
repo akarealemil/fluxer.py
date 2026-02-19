@@ -172,9 +172,17 @@ class Client:
                 await self._fire("on_channel_update", channel)
 
             case "CHANNEL_DELETE":
-                channel = Channel.from_data(data, self._http)
-                self._channels.pop(channel.id, None)
-                await self._fire("on_channel_delete", channel)
+                # CHANNEL_DELETE only provides minimal data (guild_id, id)
+                # Try to get the full channel from cache before removing it
+                channel_id = int(data["id"])
+                channel = self._channels.pop(channel_id, None)
+
+                if channel:
+                    # We have the full channel object from cache
+                    await self._fire("on_channel_delete", channel)
+                else:
+                    # Channel wasn't cached, fire event with raw data
+                    await self._fire("on_channel_delete", data)
 
             case "RESUMED":
                 await self._fire("on_resumed")
@@ -279,6 +287,19 @@ class Client:
         assert self._http is not None
         data = await self._http.get_message(channel_id, message_id)
         return Message.from_data(data, self._http)
+
+    async def delete_message(self, channel_id: int | str, message_id: int | str) -> None:
+        """Delete a message by channel ID and message ID without fetching it first.
+
+        Args:
+            channel_id: The channel ID where the message is located.
+            message_id: The message ID to delete.
+
+        Example:
+            await client.delete_message(channel_id=123456, message_id=789012)
+        """
+        assert self._http is not None
+        await self._http.delete_message(channel_id, message_id)
 
     async def fetch_guild(self, guild_id: str) -> Guild:
         """Fetch a guild from the API."""

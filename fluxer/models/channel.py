@@ -8,6 +8,7 @@ from ..enums import ChannelType
 from ..utils import snowflake_to_datetime
 
 if TYPE_CHECKING:
+    from ..file import File
     from ..http import HTTPClient
     from .embed import Embed
     from .message import Message
@@ -76,7 +77,8 @@ class Channel:
         *,
         embed: Embed | None = None,
         embeds: list[Embed] | None = None,
-        files: list[dict[str, Any]] | None = None,
+        file: File | None = None,
+        files: list[File] | None = None,
         message_reference: dict[str, Any] | None = None,
     ) -> Message:
         """Send a message to this channel.
@@ -85,13 +87,24 @@ class Channel:
             content: Text content of the message.
             embed: A single embed to include.
             embeds: Multiple embeds to include.
-            files: List of file objects to attach. Each file should be a dict with
-                'data' (file bytes) and 'filename' (str) keys.
-                Example: [{"data": file_bytes, "filename": "image.png"}]
+            file: A single File object to attach.
+            files: Multiple File objects to attach.
             message_reference: Reference to another message for replies.
 
         Returns:
             The created Message object.
+
+        Examples:
+            # Send a file from path
+            from fluxer import File
+            await channel.send("Hello!", file=File("image.png"))
+
+            # Send multiple files
+            await channel.send("Files:", files=[File("a.txt"), File("b.txt")])
+
+            # Send file with embed
+            embed = Embed(title="Title")
+            await channel.send(embed=embed, file=File("data.json"))
         """
         # Import here to avoid circular imports
         from .message import Message
@@ -105,11 +118,18 @@ class Channel:
         elif embeds:
             embed_list = [e.to_dict() for e in embeds]
 
+        # Handle file/files parameter - convert File objects to dict format
+        file_list: list[dict[str, Any]] | None = None
+        if file is not None:
+            file_list = [file.to_dict()]
+        elif files is not None:
+            file_list = [f.to_dict() for f in files]
+
         data = await self._http.send_message(
             self.id,
             content=content,
             embeds=embed_list,
-            files=files,
+            files=file_list,
             message_reference=message_reference,
         )
         return Message.from_data(data, self._http)

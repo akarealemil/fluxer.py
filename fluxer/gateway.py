@@ -312,6 +312,11 @@ class Gateway:
 
             await asyncio.sleep(self._heartbeat_interval * random.random())
             while True:
+                # Check if the connection is still active
+                if not self.is_connected:
+                    log.debug("WebSocket disconnected, stopping heartbeat loop")
+                    return
+
                 if not self._last_heartbeat_ack:
                     log.warning(
                         "Missed heartbeat ACK, closing connection to trigger reconnect"

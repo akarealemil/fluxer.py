@@ -1,4 +1,4 @@
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 __title__ = "fluxer.py"
 __author__ = "Emil"
 __license__ = "MIT"
@@ -7,6 +7,7 @@ __license__ = "MIT"
 from .client import Bot, Client
 from .cog import Cog
 from .enums import ChannelType, GatewayCloseCode, GatewayOpcode, Intents
+from .file import File
 from .http import HTTPClient
 
 # Errors
@@ -34,6 +35,7 @@ __all__ = [
     "Bot",
     "Client",
     "Cog",
+    "File",
     "HTTPClient",
     # Enums
     "ChannelType",

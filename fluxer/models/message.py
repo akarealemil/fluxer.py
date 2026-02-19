@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 from ..utils import snowflake_to_datetime
 
 if TYPE_CHECKING:
+    from ..file import File
     from ..http import HTTPClient
     from .channel import Channel
     from .reaction import PartialEmoji, Reaction
@@ -74,38 +75,118 @@ class Message:
         """The channel this message was sent in (if cached)."""
         return self._channel
 
-    async def send(self, content: str | None = None, **kwargs: Any) -> Message:
+    @staticmethod
+    def _process_embed_args(kwargs: dict[str, Any]) -> dict[str, Any]:
+        """Process embed/embeds arguments to ensure proper format.
+
+        Converts:
+        - embed=Embed(...) -> embeds=[{...}]
+        - embeds=[Embed(...)] -> embeds=[{...}]
+        - embeds=[{...}] -> embeds=[{...}] (no change)
+        """
+        from .embed import Embed
+
+        # Handle singular 'embed' parameter
+        if "embed" in kwargs:
+            embed = kwargs.pop("embed")
+            if embed is not None:
+                # Convert Embed object to dict
+                if isinstance(embed, Embed):
+                    kwargs["embeds"] = [embed.to_dict()]
+                else:
+                    # Assume it's already a dict
+                    kwargs["embeds"] = [embed]
+
+        # Handle plural 'embeds' parameter - convert any Embed objects to dicts
+        if "embeds" in kwargs and kwargs["embeds"] is not None:
+            kwargs["embeds"] = [
+                e.to_dict() if isinstance(e, Embed) else e
+                for e in kwargs["embeds"]
+            ]
+
+        return kwargs
+
+    async def send(
+        self,
+        content: str | None = None,
+        *,
+        embed: Any | None = None,
+        embeds: list[Any] | None = None,
+        file: File | None = None,
+        files: list[File] | None = None,
+        **kwargs: Any,
+    ) -> Message:
         """Send a message to the same channel (without replying).
 
         Args:
             content: The message content.
-            **kwargs: Additional arguments to pass to send_message (embed, embeds, etc.)
+            embed: A single embed to include.
+            embeds: Multiple embeds to include.
+            file: A single File object to attach.
+            files: Multiple File objects to attach.
+            **kwargs: Additional arguments to pass to send_message
 
         Returns:
             The created Message object.
         """
         if self._http is None:
             raise RuntimeError("Message is not bound to an HTTP client")
+
+        # Auto-convert single embed to embeds list
+        combined_kwargs = {"embed": embed, "embeds": embeds, **kwargs}
+        combined_kwargs = self._process_embed_args(combined_kwargs)
+
+        # Handle file/files parameter - convert File objects to dict format
+        file_list: list[dict[str, Any]] | None = None
+        if file is not None:
+            file_list = [file.to_dict()]
+        elif files is not None:
+            file_list = [f.to_dict() for f in files]
 
         data = await self._http.send_message(
             self.channel_id,
             content=content,
-            **kwargs,
+            files=file_list,
+            **combined_kwargs,
         )
         return Message.from_data(data, self._http)
 
-    async def reply(self, content: str | None = None, **kwargs: Any) -> Message:
+    async def reply(
+        self,
+        content: str | None = None,
+        *,
+        embed: Any | None = None,
+        embeds: list[Any] | None = None,
+        file: File | None = None,
+        files: list[File] | None = None,
+        **kwargs: Any,
+    ) -> Message:
         """Reply to this message with a message reference.
 
         Args:
             content: The message content.
-            **kwargs: Additional arguments to pass to send_message (embed, embeds, etc.)
+            embed: A single embed to include.
+            embeds: Multiple embeds to include.
+            file: A single File object to attach.
+            files: Multiple File objects to attach.
+            **kwargs: Additional arguments to pass to send_message
 
         Returns:
             The created Message object.
         """
         if self._http is None:
             raise RuntimeError("Message is not bound to an HTTP client")
+
+        # Auto-convert single embed to embeds list
+        combined_kwargs = {"embed": embed, "embeds": embeds, **kwargs}
+        combined_kwargs = self._process_embed_args(combined_kwargs)
+
+        # Handle file/files parameter - convert File objects to dict format
+        file_list: list[dict[str, Any]] | None = None
+        if file is not None:
+            file_list = [file.to_dict()]
+        elif files is not None:
+            file_list = [f.to_dict() for f in files]
 
         # Create message reference to reply to this message
         message_reference = {
@@ -119,12 +200,21 @@ class Message:
             self.channel_id,
             content=content,
             message_reference=message_reference,
-            **kwargs,
+            files=file_list,
+            **combined_kwargs,
         )
         return Message.from_data(data, self._http)
 
     async def send_to_channel(
-        self, channel_id: int | str, content: str | None = None, **kwargs: Any
+        self,
+        channel_id: int | str,
+        content: str | None = None,
+        *,
+        embed: Any | None = None,
+        embeds: list[Any] | None = None,
+        file: File | None = None,
+        files: list[File] | None = None,
+        **kwargs: Any,
     ) -> Message:
         """Send a message to a different channel.
 
@@ -134,7 +224,11 @@ class Message:
         Args:
             channel_id: The target channel ID.
             content: The message content.
-            **kwargs: Additional arguments to pass to send_message (embed, embeds, etc.)
+            embed: A single embed to include.
+            embeds: Multiple embeds to include.
+            file: A single File object to attach.
+            files: Multiple File objects to attach.
+            **kwargs: Additional arguments to pass to send_message
 
         Returns:
             The created Message object.
@@ -142,7 +236,20 @@ class Message:
         if self._http is None:
             raise RuntimeError("Message is not bound to an HTTP client")
 
-        data = await self._http.send_message(channel_id, content=content, **kwargs)
+        # Auto-convert single embed to embeds list
+        combined_kwargs = {"embed": embed, "embeds": embeds, **kwargs}
+        combined_kwargs = self._process_embed_args(combined_kwargs)
+
+        # Handle file/files parameter - convert File objects to dict format
+        file_list: list[dict[str, Any]] | None = None
+        if file is not None:
+            file_list = [file.to_dict()]
+        elif files is not None:
+            file_list = [f.to_dict() for f in files]
+
+        data = await self._http.send_message(
+            channel_id, content=content, files=file_list, **combined_kwargs
+        )
         return Message.from_data(data, self._http)
 
     async def edit(self, content: str | None = None, **kwargs: Any) -> Message:
