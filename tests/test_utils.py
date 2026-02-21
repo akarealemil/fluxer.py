@@ -54,7 +54,9 @@ def test_utcnow() -> None:
             "*h*\n> [li|nk](~~url~~) xyz **https://google.com/stuff?uwu=owo",
             "h\n xyz https://google.com/stuff?uwu=owo",
             # NOTE: currently doesn't escape inside `[x](y)`, should that be changed?
-            r"\*h\*" + "\n" + r"\> \[li|nk](~~url~~) xyz \*\*https://google.com/stuff?uwu=owo",
+            r"\*h\*"
+            + "\n"
+            + r"\> \[li|nk](~~url~~) xyz \*\*https://google.com/stuff?uwu=owo",
         ),
     ],
 )
@@ -91,7 +93,11 @@ def test_markdown_links(text: str, expected, expected_ignore) -> None:
     [
         (0, "F", "<t:0:F>"),
         (1630245000.1234, "T", "<t:1630245000:T>"),
-        (datetime(2021, 8, 29, 13, 50, 0, tzinfo=timezone.utc), "f", "<t:1630245000:f>"),
+        (
+            datetime(2021, 8, 29, 13, 50, 0, tzinfo=timezone.utc),
+            "f",
+            "<t:1630245000:f>",
+        ),
     ],
 )
 def test_format_dt(dt, style, expected) -> None:

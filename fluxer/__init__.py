@@ -25,7 +25,17 @@ from .errors import (
 )
 
 # Models
-from .models import Channel, Embed, Emoji, Guild, GuildMember, Message, User, UserProfile, Webhook
+from .models import (
+    Channel,
+    Embed,
+    Emoji,
+    Guild,
+    GuildMember,
+    Message,
+    User,
+    UserProfile,
+    Webhook,
+)
 
 # Utilities
 from .utils import datetime_to_snowflake, snowflake_to_datetime

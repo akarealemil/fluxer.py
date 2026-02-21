@@ -33,7 +33,8 @@ class Emoji:
             id=int(data["id"]),
             name=data.get("name", ""),
             animated=data.get("animated", False),
-            guild_id=guild_id or (int(data["guild_id"]) if data.get("guild_id") else None),
+            guild_id=guild_id
+            or (int(data["guild_id"]) if data.get("guild_id") else None),
             roles=[int(role_id) for role_id in data.get("roles", [])],
             managed=data.get("managed", False),
             available=data.get("available", True),

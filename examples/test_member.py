@@ -17,7 +17,9 @@ async def main():
     if len(sys.argv) < 3:
         print("Usage: python examples/test_member.py <guild_id> <user_id>")
         print("\nExample:")
-        print("  python examples/test_member.py 1470940902728487571 1470560041931524138")
+        print(
+            "  python examples/test_member.py 1470940902728487571 1470560041931524138"
+        )
         sys.exit(1)
 
     guild_id = sys.argv[1]
@@ -63,7 +65,9 @@ async def main():
             print(f"Timed Out Until: {member.communication_disabled_until}")
 
         # Avatars
-        print(f"\nUser Avatar:    {member.user.avatar_url or member.user.default_avatar_url}")
+        print(
+            f"\nUser Avatar:    {member.user.avatar_url or member.user.default_avatar_url}"
+        )
         if member.guild_avatar_url:
             print(f"Guild Avatar:   {member.guild_avatar_url}")
 

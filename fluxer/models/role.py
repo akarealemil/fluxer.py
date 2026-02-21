@@ -31,7 +31,10 @@ class Role:
 
     @classmethod
     def from_data(
-        cls, data: dict[str, Any], http: HTTPClient | None = None, guild_id: int | None = None
+        cls,
+        data: dict[str, Any],
+        http: HTTPClient | None = None,
+        guild_id: int | None = None,
     ) -> Role:
         """Create a Role from API data.
 
@@ -49,7 +52,8 @@ class Role:
             permissions=int(data.get("permissions", 0)),
             managed=data.get("managed", False),
             mentionable=data.get("mentionable", False),
-            guild_id=guild_id or (int(data["guild_id"]) if data.get("guild_id") else None),
+            guild_id=guild_id
+            or (int(data["guild_id"]) if data.get("guild_id") else None),
             _http=http,
         )
 
