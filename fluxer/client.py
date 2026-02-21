@@ -6,7 +6,6 @@ import importlib.util
 import inspect
 import logging
 import sys
-from pathlib import Path
 from typing import Any, Callable, Coroutine
 
 from .enums import Intents
@@ -669,15 +668,15 @@ class Bot(Client):
 
     def _convert_argument(self, value: str, annotation: Any) -> Any:
         """Convert a string argument to the appropriate type based on annotation."""
-        if annotation == inspect.Parameter.empty or annotation == str:
+        if annotation == inspect.Parameter.empty or annotation is str:
             return value
 
         try:
-            if annotation == int:
+            if annotation is int:
                 return int(value)
-            elif annotation == float:
+            elif annotation is float:
                 return float(value)
-            elif annotation == bool:
+            elif annotation is bool:
                 return value.lower() in ("true", "1", "yes", "y")
             else:
                 # Try to call the annotation as a constructor
