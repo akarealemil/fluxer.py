@@ -248,6 +248,7 @@ class HTTPClient:
                     )
 
             except (aiohttp.ClientError, asyncio.TimeoutError) as exc:
+                self._rate_limiter.release(route.bucket, {})
                 if attempt < 4:
                     log.warning(
                         "Connection error: %s, retrying (attempt %d)", exc, attempt + 1
