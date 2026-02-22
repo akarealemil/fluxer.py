@@ -6,7 +6,6 @@ import importlib.util
 import inspect
 import logging
 import sys
-from pathlib import Path
 from typing import Any, Callable, Coroutine
 
 from .enums import Intents
@@ -33,10 +32,7 @@ class Client:
     """
 
     def __init__(
-        self,
-        *,
-        intents: Intents = Intents.default(),
-        api_url: str | None = None
+        self, *, intents: Intents = Intents.default(), api_url: str | None = None
     ) -> None:
         self.intents = intents
         self.api_url = api_url
@@ -288,7 +284,9 @@ class Client:
         data = await self._http.get_message(channel_id, message_id)
         return Message.from_data(data, self._http)
 
-    async def delete_message(self, channel_id: int | str, message_id: int | str) -> None:
+    async def delete_message(
+        self, channel_id: int | str, message_id: int | str
+    ) -> None:
         """Delete a message by channel ID and message ID without fetching it first.
 
         Args:
@@ -570,7 +568,7 @@ class Bot(Client):
                 if handler:
                     try:
                         # Parse arguments based on function signature
-                        args_str = content[len(cmd):].strip()
+                        args_str = content[len(cmd) :].strip()
                         await self._invoke_command(handler, message, args_str)
                     except TypeError as e:
                         # Handle missing required arguments
@@ -612,9 +610,7 @@ class Bot(Client):
 
         # Check for keyword-only parameters (indicated by * in signature)
         # e.g., async def say(ctx, *, message: str)
-        has_kwonly = any(
-            p.kind == inspect.Parameter.KEYWORD_ONLY for p in params
-        )
+        has_kwonly = any(p.kind == inspect.Parameter.KEYWORD_ONLY for p in params)
 
         if has_kwonly and len(params) == 1:
             # Single keyword-only argument captures all remaining text
@@ -672,15 +668,15 @@ class Bot(Client):
 
     def _convert_argument(self, value: str, annotation: Any) -> Any:
         """Convert a string argument to the appropriate type based on annotation."""
-        if annotation == inspect.Parameter.empty or annotation == str:
+        if annotation == inspect.Parameter.empty or annotation is str:
             return value
 
         try:
-            if annotation == int:
+            if annotation is int:
                 return int(value)
-            elif annotation == float:
+            elif annotation is float:
                 return float(value)
-            elif annotation == bool:
+            elif annotation is bool:
                 return value.lower() in ("true", "1", "yes", "y")
             else:
                 # Try to call the annotation as a constructor
@@ -872,9 +868,7 @@ class Bot(Client):
             else:
                 setup(self)
         except Exception as e:
-            raise RuntimeError(
-                f"Failed to load extension '{name}': {e}"
-            ) from e
+            raise RuntimeError(f"Failed to load extension '{name}': {e}") from e
 
         # Store the module
         self._extensions[name] = module

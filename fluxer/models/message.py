@@ -100,8 +100,7 @@ class Message:
         # Handle plural 'embeds' parameter - convert any Embed objects to dicts
         if "embeds" in kwargs and kwargs["embeds"] is not None:
             kwargs["embeds"] = [
-                e.to_dict() if isinstance(e, Embed) else e
-                for e in kwargs["embeds"]
+                e.to_dict() if isinstance(e, Embed) else e for e in kwargs["embeds"]
             ]
 
         return kwargs

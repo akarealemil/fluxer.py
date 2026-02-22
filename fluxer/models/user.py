@@ -86,9 +86,7 @@ class User:
         """URL for the user's avatar, or None if they use the default."""
         if self.avatar_hash:
             ext = "gif" if self.avatar_hash.startswith("a_") else "png"
-            return (
-                f"https://fluxerusercontent.com/avatars/{self.id}/{self.avatar_hash}.{ext}"
-            )
+            return f"https://fluxerusercontent.com/avatars/{self.id}/{self.avatar_hash}.{ext}"
         return None
 
     @property
@@ -102,9 +100,7 @@ class User:
         """URL for the user's banner, or None if they don't have one."""
         if self.banner_hash:
             ext = "gif" if self.banner_hash.startswith("a_") else "png"
-            return (
-                f"https://fluxerusercontent.com/banners/{self.id}/{self.banner_hash}.{ext}"
-            )
+            return f"https://fluxerusercontent.com/banners/{self.id}/{self.banner_hash}.{ext}"
         return None
 
     def __eq__(self, other: object) -> bool:

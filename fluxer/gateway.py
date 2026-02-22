@@ -166,7 +166,7 @@ class Gateway:
         self._tasks.append(task)
         task.add_done_callback(lambda t: self._tasks.remove(t))
         task.add_done_callback(lambda t: t.result())
-    
+
     async def _handle_payload(self, payload: GatewayPayload) -> None:
         """Route an incoming payload by opcode."""
         log.debug("Received: %s", payload)

@@ -64,7 +64,8 @@ _MARKDOWN_ESCAPE_SUBREGEX = "|".join(
 _MARKDOWN_ESCAPE_COMMON = r"^>(?:>>)?\s|\[.+\]\(.+\)"
 
 _MARKDOWN_ESCAPE_REGEX = re.compile(
-    rf"(?P<markdown>{_MARKDOWN_ESCAPE_SUBREGEX}|{_MARKDOWN_ESCAPE_COMMON})", re.MULTILINE
+    rf"(?P<markdown>{_MARKDOWN_ESCAPE_SUBREGEX}|{_MARKDOWN_ESCAPE_COMMON})",
+    re.MULTILINE,
 )
 
 _URL_REGEX = r"(?P<url><[^: >]+:\/[^ >]+>|(?:https?|steam):\/\/[^\s<]+[^<.,:;\"\'\]\s])"
@@ -104,7 +105,9 @@ def remove_markdown(text: str, *, ignore_links: bool = True) -> str:
     return re.sub(regex, replacement, text, flags=re.MULTILINE)
 
 
-def escape_markdown(text: str, *, as_needed: bool = False, ignore_links: bool = True) -> str:
+def escape_markdown(
+    text: str, *, as_needed: bool = False, ignore_links: bool = True
+) -> str:
     r"""A helper function that escapes Fluxer's markdown.
 
     Parameters

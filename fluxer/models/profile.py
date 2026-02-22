@@ -36,7 +36,9 @@ class UserProfile:
     _http: HTTPClient | None = field(default=None, repr=False)
 
     @classmethod
-    def from_data(cls, data: dict[str, Any], http: HTTPClient | None = None) -> UserProfile:
+    def from_data(
+        cls, data: dict[str, Any], http: HTTPClient | None = None
+    ) -> UserProfile:
         """Construct a UserProfile from raw API data.
 
         Args:
@@ -70,9 +72,7 @@ class UserProfile:
         """URL for the user's banner, or None if they don't have one."""
         if self.banner:
             ext = "gif" if self.banner.startswith("a_") else "png"
-            return (
-                f"https://fluxerusercontent.com/banners/{self.user.id}/{self.banner}.{ext}"
-            )
+            return f"https://fluxerusercontent.com/banners/{self.user.id}/{self.banner}.{ext}"
         return None
 
     @property

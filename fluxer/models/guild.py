@@ -77,7 +77,10 @@ class Guild:
         from .role import Role
 
         data = await self._http.get_guild_roles(self.id)
-        return [Role.from_data(role_data, self._http, guild_id=self.id) for role_data in data]
+        return [
+            Role.from_data(role_data, self._http, guild_id=self.id)
+            for role_data in data
+        ]
 
     async def create_role(
         self,
@@ -133,7 +136,9 @@ class Guild:
         data = await self._http.get_guild_member(self.id, user_id)
         return GuildMember.from_data(data, self._http)
 
-    async def fetch_members(self, *, limit: int = 100, after: int | None = None) -> list[Any]:
+    async def fetch_members(
+        self, *, limit: int = 100, after: int | None = None
+    ) -> list[Any]:
         """Fetch members from this guild.
 
         Args:
