@@ -451,9 +451,18 @@ class Client:
         """
         # Create HTTP client with custom API URL if provided
         if self.api_url:
-            self._http = HTTPClient(token, api_url=self.api_url)
+            self._http = HTTPClient(
+                token,
+                api_url=self.api_url,
+                max_retries=self._max_retries,
+                retry_forever=self._retry_forever
+            )
         else:
-            self._http = HTTPClient(token)
+            self._http = HTTPClient(
+                token,
+                max_retries=self._max_retries,
+                retry_forever=self._retry_forever
+            )
 
         self._gateway = Gateway(
             http_client=self._http,
@@ -518,12 +527,17 @@ class Bot(Client):
         command_prefix: str = "!",
         intents: Intents = Intents.default(),
         api_url: str | None = None,
+        max_retries: int = 4,         
+        retry_forever: bool = False, 
     ) -> None:
         super().__init__(intents=intents, api_url=api_url)
         self.command_prefix = command_prefix
         self._commands: dict[str, EventHandler] = {}
         self._cogs: dict[str, Any] = {}  # Store loaded cogs
         self._extensions: dict[str, Any] = {}  # Store loaded extensions
+
+        self._max_retries = max_retries
+        self._retry_forever = retry_forever
 
         # Auto-register the command dispatcher
         @self.event
