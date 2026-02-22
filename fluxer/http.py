@@ -128,12 +128,14 @@ class HTTPClient:
                  Use this to connect to self-hosted Fluxer instances
     """
 
-    def __init__(self, token: str, *, is_bot: bool = True, api_url: str = DEFAULT_API_URL) -> None:
+    def __init__(self, token: str, *, is_bot: bool = True, api_url: str = DEFAULT_API_URL, max_retries=4, retry_forever=False) -> None:
         self.token = token
         self.is_bot = is_bot
         self.api_url = api_url.rstrip("/")  # Remove trailing slash if present
         self._session: aiohttp.ClientSession | None = None
         self._rate_limiter = RateLimiter()
+        self.max_retries = max_retries
+        self.retry_forever = retry_forever
 
     def _route(self, method: str, path: str, **params: Any) -> Route:
         """Create a Route with this client's API URL."""
@@ -171,10 +173,12 @@ class HTTPClient:
         data: aiohttp.FormData | None = None,
         params: dict[str, Any] | None = None,
         reason: str | None = None,
+        max_retries: int | None = None,       
+        retry_forever: bool | None = None,     
     ) -> Any:
         """Make an authenticated request to the Fluxer API.
 
-        Handles rate limiting, retries on 429/5xx, and error mapping.
+        Handles rate limiting, retries on 429/5xx, connection errors, and error mapping.
 
         Returns:
             Parsed JSON response, or None for 204 No Content.
@@ -187,7 +191,13 @@ class HTTPClient:
         if json is not None:
             headers["Content-Type"] = "application/json"
 
-        for attempt in range(5):  # Max retries
+        if max_retries is None:
+            max_retries = self.max_retries
+        if retry_forever is None:
+            retry_forever = self.retry_forever
+
+        attempt = 0
+        while True:
             await self._rate_limiter.acquire(route.bucket)
 
             try:
@@ -224,6 +234,9 @@ class HTTPClient:
                                 attempt + 1,
                             )
                             await asyncio.sleep(retry_after)
+                        attempt += 1
+                        if not retry_forever and attempt > max_retries:
+                            raise RuntimeError(f"Failed after {attempt} attempts: {route.method} {route.url}")
                         continue
 
                     # Server error — retry
@@ -235,6 +248,9 @@ class HTTPClient:
                             attempt + 1,
                         )
                         await asyncio.sleep(1 + attempt)
+                        attempt += 1
+                        if not retry_forever and attempt > max_retries:
+                            raise RuntimeError(f"Failed after {attempt} attempts: {route.method} {route.url}")
                         continue
 
                     # Client error — raise
@@ -248,15 +264,15 @@ class HTTPClient:
                     )
 
             except (aiohttp.ClientError, asyncio.TimeoutError) as exc:
-                if attempt < 4:
-                    log.warning(
-                        "Connection error: %s, retrying (attempt %d)", exc, attempt + 1
-                    )
-                    await asyncio.sleep(1 + attempt)
-                    continue
-                raise
-
-        raise RuntimeError(f"Failed after 5 attempts: {route.method} {route.url}")
+                self._rate_limiter.release(route.bucket, {})
+                log.warning(
+                    "Connection error: %s, retrying (attempt %d)", exc, attempt + 1
+                )
+                attempt += 1
+                if not retry_forever and attempt > max_retries:
+                    raise
+                await asyncio.sleep(1 + attempt)
+                continue
 
     # =========================================================================
     # Convenience methods for common endpoints
